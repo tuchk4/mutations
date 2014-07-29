@@ -1,8 +1,8 @@
 {
   "author": "tuchk4",
-  "name": "transform",
+  "name": "morf",
   "description": "Transforms js objects using specified rules",
-  "version": "0.0.1",
+  "version": "0.0.0",
   "repository": {
     "url": "https://github.com/tuchk4/transforms.git"
   },
