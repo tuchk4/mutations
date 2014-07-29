@@ -1,8 +1,8 @@
 {
   "author": "tuchk4",
-  "name": "morf",
+  "name": "enchmut",
   "description": "Transforms js objects using specified rules",
-  "version": "0.0.0",
+  "version": "0.0.2",
   "repository": {
     "url": "https://github.com/tuchk4/transforms.git"
   },
@@ -11,7 +11,7 @@
     "object"
   ],
   "bin": {
-    "enchup": "src/index"
+    "mutate": "src/index"
   },
   "dependencies": {
   },
