@@ -1,4 +1,4 @@
-!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.transform=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+!function(e){if("object"==typeof exports&&"undefined"!=typeof module)module.exports=e();else if("function"==typeof define&&define.amd)define([],e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.mutate=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 "use strict";
 
 var Utils = require('./utils/include'),
@@ -35,36 +35,92 @@ function selectParam(key, value, rule) {
   };
 }
 
-function insert(object, key, value){
+function insert(obj, key, value){
   var parts = key.split('.'),
     last = parts.pop();
 
 
   for (var i = 0, size = parts.length; i < size; i++){
-    if (object[parts[i]] === undefined){
-      object[parts[i]] = {};
+    if (obj[parts[i]] === undefined){
+      obj[parts[i]] = {};
     }
 
-    object = object[parts[i]];
+    obj = obj[parts[i]];
   }
 
-  if (!Utils.types.isObject(object)){
-    throw new Error('Invalid rename property or last obj element is not Array');
+  if (!Utils.types.isObject(obj)){
+    throw new Error('Invalid rename property or last obj element is not obj or arr');
   }
 
 
-  object[last] = value;
+  obj[last] = value;
+}
+
+
+function remove(obj, path){
+  var dots = path.split('.'),
+    last = dots.pop(),
+    isExist = true;
+
+  for (var i = 0, size = dots.length; i < size; i++){
+    if (obj.hasOwnProperty(dots[i])) {
+      if (obj[dots[i]] != undefined) {
+        obj = obj[dots[i]];
+      } else {
+        isExist = false;
+      }
+    } else {
+      isExist = false;
+    }
+  }
+
+  if (isExist){
+    delete obj[last];
+  }
+}
+
+function get(obj, path){
+  var dots = path.split('.'),
+    current = obj;
+
+  for (var i = 0, size = dots.length; i < size; ++i) {
+    if (current.hasOwnProperty(dots[i])) {
+      if(current[dots[i]] === undefined) {
+        return undefined;
+      } else {
+        current = current[dots[i]];
+      }
+    }
+  }
+  return current;
 }
 
 function resolve(object, rule) {
   var resolver = Types[rule.type];
 
   var transformed = {};
+
   for (var key in object){
     if (object.hasOwnProperty(key) && !resolver.isExcluded(key, rule) && !isExcluded(key, rule)){
       var param = selectParam(key, object[key], rule);
-
       insert(transformed, param.key, param.value);
+    }
+  }
+
+  for (var path in rule.fields){
+    if (rule.fields.hasOwnProperty(path)){
+      var dots = path.split('.');
+
+      if (dots.length > 1){
+        var value = get(object, path),
+          param = selectParam(path, value, rule);
+
+        if (path != param.key) {
+          remove(transformed, path);
+        }
+
+        insert(transformed, param.key, param.value);
+      }
     }
   }
 
