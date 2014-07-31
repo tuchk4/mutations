@@ -1,5 +1,5 @@
 {
-  "name": "transform",
+  "name": "mutations",
   "version": "0.0.1",
   "main": "build/transform.js",
   "ignore": [

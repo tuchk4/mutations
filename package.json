@@ -1,6 +1,6 @@
 {
   "author": "tuchk4",
-  "name": "enchmut",
+  "name": "mutations",
   "description": "Transforms js objects using specified rules",
   "version": "0.0.2",
   "repository": {
