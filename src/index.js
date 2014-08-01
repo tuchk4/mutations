@@ -1,16 +1,15 @@
 "use strict";
 
-var Utils = require('./utils/include'),
-  Types = {
-    select: require('./types/select'),
-    transform: require('./types/transform')
-  };
+var isArray = require('./utils/types').isArray,
+  isObject = require('./utils/types').isObject,
+  Mutators = require('./utils/mutators');
 
-function isExcluded(key, rule){
-  return rule.exclude.indexOf(key) != -1;
+
+function unique(value, index, self) {
+  return self.indexOf(value) === index;
 }
 
-function selectParam(key, value, rule) {
+function parse(key, value, rule) {
 
   if (rule.fields.hasOwnProperty(key)){
     var field = rule.fields[key];
@@ -34,137 +33,123 @@ function selectParam(key, value, rule) {
   };
 }
 
-function insert(obj, key, value){
-  var parts = key.split('.'),
-    last = parts.pop();
+function clone(obj) {
 
+  // Handle the 3 simple types, and null or undefined
+  if (null == obj || "object" != typeof obj) return obj;
 
-  for (var i = 0, size = parts.length; i < size; i++){
-    if (obj[parts[i]] === undefined){
-      obj[parts[i]] = {};
+  // Handle Date
+  if (obj instanceof Date) {
+    var copy = new Date();
+    copy.setTime(obj.getTime());
+    return copy;
+  }
+
+  // Handle Array
+  if (obj instanceof Array) {
+    var copy = [];
+    for (var i = 0, len = obj.length; i < len; i++) {
+      copy[i] = clone(obj[i]);
     }
-
-    obj = obj[parts[i]];
+    return copy;
   }
 
-  if (!Utils.types.isObject(obj)){
-    throw new Error('Invalid rename property or last obj element is not obj or arr');
+  // Handle Object
+  if (obj instanceof Object) {
+    var copy = {};
+    for (var attr in obj) {
+      if (obj.hasOwnProperty(attr)) copy[attr] = clone(obj[attr]);
+    }
+    return copy;
   }
 
-
-  obj[last] = value;
+  throw new Error("Unable to copy obj! Its type isn't supported.");
 }
 
 
-function remove(obj, path){
-  var dots = path.split('.'),
-    last = dots.pop(),
-    isExist = true;
 
-  for (var i = 0, size = dots.length; i < size; i++){
-    if (obj.hasOwnProperty(dots[i])) {
-      if (obj[dots[i]] != undefined) {
-        obj = obj[dots[i]];
-      } else {
-        isExist = false;
-      }
-    } else {
-      isExist = false;
-    }
+function resolve(origin, rule) {
+
+  var obj = clone(origin);
+
+  var keys;
+  if (rule.type == 'select'){
+    keys = Object.keys(rule.fields);
+  } else {
+    keys = Object.keys(obj)
+      .concat(Object.keys(rule.fields))
+      .filter(unique);
   }
 
-  if (isExist){
-    delete obj[last];
+  for (var i = 0, size = rule.remove.length; i < size; i++){
+    Mutators.remove(obj, rule.remove[i]);
   }
-}
-
-function get(obj, path){
-  var dots = path.split('.'),
-    current = obj;
-
-  for (var i = 0, size = dots.length; i < size; ++i) {
-    if (current.hasOwnProperty(dots[i])) {
-      if(current[dots[i]] === undefined) {
-        return undefined;
-      } else {
-        current = current[dots[i]];
-      }
-    }
-  }
-  return current;
-}
-
-function resolve(object, rule) {
-  var resolver = Types[rule.type];
 
   var transformed = {};
+  for (i = 0, size = keys.length; i < size; i++) {
+    var key = keys[i];
 
-  for (var key in object){
-    if (object.hasOwnProperty(key) && !resolver.isExcluded(key, rule) && !isExcluded(key, rule)){
-      var param = selectParam(key, object[key], rule);
-      insert(transformed, param.key, param.value);
-    }
-  }
+      var value = Mutators.get(obj, key, rule),
+        param = parse(key, value, rule);
 
-  for (var path in rule.fields){
-    if (rule.fields.hasOwnProperty(path)){
-      var dots = path.split('.');
-
-      if (dots.length > 1){
-        var value = get(object, path),
-          param = selectParam(path, value, rule);
-
-        if (path != param.key) {
-          remove(transformed, path);
-        }
-
-        insert(transformed, param.key, param.value);
+      if (key != param.key) {
+        Mutators.remove(transformed, key);
       }
-    }
+
+      Mutators.insert(transformed, param.key, param.value);
   }
+
 
   return transformed;
 }
 
 function isValid(rule){
-  return !rule.hasOwnProperty('type')
-    || !rule.hasOwnProperty('fields')
+  return !rule.hasOwnProperty('fields')
     || !rule.hasOwnProperty('exclude')
-    || !Types.hasOwnProperty(rule.type);
+    || !['select', 'transform'].hasOwnProperty(rule.type);
 }
 
 function fillDefaults(rule){
-  if (!rule.hasOwnProperty('exclude')){
-    rule.exclude = [];
+  if (!rule.hasOwnProperty('remove')){
+    rule.remove = [];
   }
 
   if (!rule.hasOwnProperty('type')){
     rule.type = 'transform';
   }
 
-  if (!rule.hasOwnProperty('fields')){
+  if (!rule.hasOwnProperty('fields')) {
     rule.fields = {};
   }
 }
 
 
-module.exports = function transform(object, rule){
+module.exports = function transform(obj, rule){
 
-    if (!Utils.types.isObject(object) || !isValid(rule)){
+    if (!isObject(obj) || !isValid(rule)){
       throw new Error('Invalid parameters');
     }
 
     fillDefaults(rule);
 
-    var params = [];
+    var params;
 
-    if (Utils.types.isArray(object)){
-      for (var i = 0, size = object.length; i < size; i++){
-        var transformed = resolve(object[i], rule);
-        params.push(transformed);
+    if (isArray(obj)){
+      var transformed = [];
+
+      for (var i = 0, size = obj.length; i < size; i++){
+        transformed.push(
+          resolve(obj[i], rule)
+        );
+      }
+
+      if (rule.hasOwnProperty('map')){
+        params = Mutators.map(transformed, rule.map);
+      } else {
+        params = transformed;
       }
     } else {
-      params = resolve(object, rule);
+      params = resolve(obj, rule);
     }
 
     return params;

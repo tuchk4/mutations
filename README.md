@@ -1,6 +1,8 @@
 # Transform javascript objects
 
-Available for browsers and node.
+Available for browsers and node. Will add complete README soon.
+
+- If there are '.' symbols dots in object key - there will resolved as nested objects.
 
 ## Example
 

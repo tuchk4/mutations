@@ -13,7 +13,9 @@
   "bin": {
     "mutate": "src/index"
   },
-  "dependencies": {},
+  "dependencies": {
+
+  },
   "engines": {
     "node": "*"
   },
