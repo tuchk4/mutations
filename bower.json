@@ -1,7 +1,7 @@
 {
   "name": "mutations",
-  "version": "0.0.1",
-  "main": "build/transform.js",
+  "version": "0.0.4",
+  "main": "build/build.js",
   "ignore": [
     "**/.*",
     "node_modules",
