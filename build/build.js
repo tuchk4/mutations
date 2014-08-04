@@ -3,6 +3,7 @@
 
 var isArray = require('./utils/types').isArray,
   isObject = require('./utils/types').isObject,
+  exist = require('./utils/types').exist,
   Mutators = require('./utils/mutators');
 
 
@@ -94,10 +95,20 @@ function resolve(origin, rule) {
         param = parse(key, value, rule);
 
       if (key != param.key) {
-        Mutators.remove(transformed, key);
+        //Mutators.remove(transformed, key);
       }
 
-      Mutators.insert(transformed, param.key, param.value);
+      if (exist(param.value)) {
+
+        Mutators.insert(transformed, param.key, param.value);
+        Mutators.clean(transformed, key);
+
+        if (rule.fields.hasOwnProperty(key)) {
+          var field = rule.fields[key];
+
+//           console.log(field);
+        }
+      }
   }
 
 
@@ -158,7 +169,7 @@ module.exports = function transform(obj, rule){
 },{"./utils/mutators":2,"./utils/types":3}],2:[function(require,module,exports){
 'use strict';
 var isArray = require('./types').isArray,
-  isObject = require('./types').isObject,
+  exist = require('./types').exist,
   re = /(\w+)|(\[\d+\])/g;
 
 module.exports = {
@@ -213,6 +224,21 @@ module.exports = {
     obj[this.getPart(parts[parts.length - 1])] = value;
   },
 
+  clean: function(obj, path){
+    var parts = path.match(re);
+
+    for (var i = 0, size = parts.length; i < size; i++){
+      var part = this.getPart(parts[i]);
+
+      if (obj.hasOwnProperty(part)) {
+        if (!exist(obj[part])) {
+          delete obj[part];
+          break;
+        }
+      }
+    }
+  },
+
   remove: function remove(obj, path){
 
     var parts = path.match(re),
@@ -227,9 +253,11 @@ module.exports = {
           obj = obj[part];
         } else {
           isExist = false;
+          break;
         }
       } else {
         isExist = false;
+        break;
       }
     }
 
@@ -275,16 +303,56 @@ var objectTypes = {
 var toString = Object.prototype.toString;
 var arrayClass = '[object Array]';
 
+var isObject = function(value){
+  return !!(value && objectTypes[typeof value]);
+};
+
+var isArray = function(value) {
+  return value && typeof value == 'object' && typeof value.length == 'number' &&
+    toString.call(value) == arrayClass || false;
+};
+
+var isString = function(value) {
+  return typeof value === 'string';
+};
+
+var isNumber = function(value) {
+  return typeof value === 'number';
+};
+
+var isBoolean = function(value){
+  return value === true || value === false;
+};
+
+var exist = function(value){
+  var exist = 0;
+  if (isArray(value)){
+    exist = !!value.length;
+  } else if (isObject(value)){
+    for (var i in value){
+      if (value.hasOwnProperty(i)){
+        exist = true;
+        break;
+      }
+    }
+  } else if (isString(value)) {
+    exist = !!value.length;
+  } else if (isNumber(value)){
+    exist = true;
+  } else if (isBoolean(value)){
+    exist = true;
+  }
+
+  return exist;
+};
+
 
 module.exports = {
-  isObject: function(value){
-    return !!(value && objectTypes[typeof value]);
-  },
-
-  isArray: function(value) {
-    return value && typeof value == 'object' && typeof value.length == 'number' &&
-      toString.call(value) == arrayClass || false;
-  }
+  isObject: isObject,
+  isArray: isArray,
+  isString: isString,
+  isNumber: isNumber,
+  exist: exist
 };
 },{}]},{},[1])(1)
 });
