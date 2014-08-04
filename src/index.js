@@ -2,6 +2,7 @@
 
 var isArray = require('./utils/types').isArray,
   isObject = require('./utils/types').isObject,
+  exist = require('./utils/types').exist,
   Mutators = require('./utils/mutators');
 
 
@@ -93,10 +94,20 @@ function resolve(origin, rule) {
         param = parse(key, value, rule);
 
       if (key != param.key) {
-        Mutators.remove(transformed, key);
+        //Mutators.remove(transformed, key);
       }
 
-      Mutators.insert(transformed, param.key, param.value);
+      if (exist(param.value)) {
+
+        Mutators.insert(transformed, param.key, param.value);
+        Mutators.clean(transformed, key);
+
+        if (rule.fields.hasOwnProperty(key)) {
+          var field = rule.fields[key];
+
+//           console.log(field);
+        }
+      }
   }
 
 

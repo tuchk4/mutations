@@ -4,7 +4,9 @@
   "main": "build/build.js",
   "ignore": [
     "**/.*",
-    "node_modules",
-    "components"
+    "src",
+    ".git*",
+    ".DS_Store",
+    "/.idea"
   ]
 }

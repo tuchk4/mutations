@@ -1,92 +1,115 @@
-"use strict"
+"use strict";
 
-var transform = require('./src/index');
+var mutate = require('./src/index');
 
 
+// http://www.json-generator.com/
 var data = [
   {
-    id: 1,
-    title: 'Hello',
-    likes: 100,
-    comments: [
+    "id": "53df3b43696c64dda2c5784f",
+    "index": 0,
+    "email": "claytonross@jasper.com",
+    "tags": [
+      "cupidatat",
+      "quis",
+      "tempor",
+      "duis",
+      "incididunt",
+      "et",
+      "nisi"
+    ],
+    "friends": [
       {
-        message: 'Yo message 1'
+        "id": 0,
+        "name": "George Grimes"
       },
       {
-        message: 'Yo message 2'
+        "id": 1,
+        "name": "Huffman Cunningham"
+      },
+      {
+        "id": 2,
+        "name": "Mays Deleon"
       }
-    ],
-    settings: {
-      type: 'post',
-      visible: true,
-      url: '/'
-    }
+    ]
   },
   {
-    id: 2,
-    title: 'Yo',
-    likes: 90,
-    comments: [
+    "id": "53df3b43e2655a23e05e30d2",
+    "index": 1,
+    "email": "maysdeleon@jasper.com",
+    "tags": [
+      "exercitation",
+      "eiusmod",
+      "culpa",
+      "reprehenderit",
+      "laborum",
+      "nulla",
+      "labore"
+    ],
+    "friends": [
       {
-        message: 'Yo message 1'
+        "id": 0,
+        "name": "Courtney Reilly"
       },
       {
-        message: 'Yo message 2'
+        "id": 1,
+        "name": "Mindy Phelps"
+      },
+      {
+        "id": 2,
+        "name": "Carmen Pittman"
       }
-    ],
-    settings: {
-      type: 'blog',
-      visible: true,
-      url: '/#'
-    }
+    ]
   },
   {
-    id: 3,
-    title: 'Alloha',
-    likes: 80,
-    comments: [
+    "id": "53df3b43679521ba4ab96771",
+    "index": 2,
+    "email": "carmenpittman@jasper.com",
+    "tags": [
+      "commodo",
+      "sit",
+      "nostrud",
+      "eiusmod",
+      "deserunt",
+      "cillum",
+      "mollit"
+    ],
+    "friends": [
       {
-        message: 'Alloha message 1'
+        "id": 0,
+        "name": "Kara Olson"
       },
       {
-        message: 'Alloha message 2'
+        "id": 1,
+        "name": "Preston Harrison"
+      },
+      {
+        "id": 2,
+        "name": "Brooke Dorsey"
       }
-    ],
-    settings: {
-      type: 'post',
-      visible: false,
-      url: '/#!'
-    }
+    ]
   }
 ];
 
-var result = transform(data, {
-  map: 'name',
-  remove: ['comments[0]', 'settings.type'],
+var result = mutate(data, {
+  map: 'id',
+  remove: ['tags'],
   fields: {
-    title: {
-      rename: 'name'
+    friends: {
+      map: 'id',
+      rename: 'contacts'
     },
-    'settings.url': {
-      rename: 'url'
+    'friends[0].name': {
+      rename: 'friend'
     },
-    'settings.visible': {
-      rename: 'isVisible'
-    },
-
-    'comments[0]': {
-      rename: 'first_comment'
+    'index': {
+      rename: 'i'
     }
   }
 });
 
 console.log(result);
-console.log(data);
 
-console.log('');
-console.log('');
-console.log('');
-console.log('');
 
 
 

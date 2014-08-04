@@ -1,6 +1,6 @@
 'use strict';
 var isArray = require('./types').isArray,
-  isObject = require('./types').isObject,
+  exist = require('./types').exist,
   re = /(\w+)|(\[\d+\])/g;
 
 module.exports = {
@@ -55,6 +55,21 @@ module.exports = {
     obj[this.getPart(parts[parts.length - 1])] = value;
   },
 
+  clean: function(obj, path){
+    var parts = path.match(re);
+
+    for (var i = 0, size = parts.length; i < size; i++){
+      var part = this.getPart(parts[i]);
+
+      if (obj.hasOwnProperty(part)) {
+        if (!exist(obj[part])) {
+          delete obj[part];
+          break;
+        }
+      }
+    }
+  },
+
   remove: function remove(obj, path){
 
     var parts = path.match(re),
@@ -69,9 +84,11 @@ module.exports = {
           obj = obj[part];
         } else {
           isExist = false;
+          break;
         }
       } else {
         isExist = false;
+        break;
       }
     }
 
