@@ -111,7 +111,7 @@ module.exports = {
     for (var i = 0, size = data.length; i < size; i++){
       if (!data[i].hasOwnProperty(field)){
         throw new Error('Map field does not exist in the object');
-      }
+      }    
 
       mapped[data[i][field]] = data[i];
     }

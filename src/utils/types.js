@@ -34,8 +34,10 @@ var isBoolean = function(value){
 };
 
 var exist = function(value){
-  var exist = 0;
-  if (isArray(value)){
+  var exist = false;
+  if (value instanceof Date){
+    exist = true;
+  } else if (isArray(value)){
     exist = !!value.length;
   } else if (isObject(value)){
     for (var i in value){
@@ -49,6 +51,8 @@ var exist = function(value){
   } else if (isNumber(value)){
     exist = true;
   } else if (isBoolean(value)){
+    exist = true;
+  } else if (value === null){
     exist = true;
   }
 

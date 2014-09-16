@@ -7,6 +7,7 @@
     "src",
     ".git*",
     ".DS_Store",
-    "/.idea"
+    "/.idea",
+    "/index.js"
   ]
 }
