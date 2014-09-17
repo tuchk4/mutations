@@ -236,7 +236,7 @@ Flow.onExec(function() {
 });
 
 Mutate.conversions = Conversions;
-Mutate.setConversion = function(name, func) {
+Mutate.addConversion = function(name, func) {
 
   if (Mutate.conversions.hasOwnProperty(name)) {
     console.log('Notice: Converion already exist');
