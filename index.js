@@ -221,6 +221,9 @@ var flow = mutate.flow
     .field('params')
       .convert('toJSON');
 
- console.log(JSON.stringify(flow(obj), null, 4));
 
- // console.log(JSON.stringify(flow.getQueue(), null, 4));
+
+
+// console.log(JSON.stringify(flow(obj), null, 4));
+
+  console.log(JSON.stringify(flow.getQueue(), null, 4));
