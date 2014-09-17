@@ -4,10 +4,10 @@
   "main": "build/build.js",
   "ignore": [
     "**/.*",
-    "src",
-    ".git*",
-    ".DS_Store",
-    "/.idea",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests",
     "/index.js"
   ]
 }
