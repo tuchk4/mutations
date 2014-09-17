@@ -34,7 +34,7 @@ function getRule(key, rules) {
 function getType(expr) {
   var type;
   if (expr.hasOwnProperty('from') && expr.hasOwnProperty('to')) {;
-    type = capitalize(expr.to) + '_To_' + capitalize(expr.from);
+    type = capitalize(expr.from) + '_To_' + capitalize(expr.to);
   } else {
     throw new Error('Both from and to types should be defined for convert rule');
   }
