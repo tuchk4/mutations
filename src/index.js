@@ -156,9 +156,9 @@ function resolve(origin, rule) {
       Mutators.insert(transformed, param.key, param.value);
       Mutators.clean(transformed, key);
     }
-
-    add(transformed, rule, origin);
   }
+
+  add(transformed, rule, origin);
 
   return transformed;
 }

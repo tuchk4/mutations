@@ -175,6 +175,7 @@ var flow = mutate.flow
       return 1;
     })
   .add(function(){
+    console.log(1);
     return {
       'hello.a.b.c[0].d': 'yo'
     }
@@ -226,4 +227,4 @@ var flow = mutate.flow
 
 // console.log(JSON.stringify(flow(obj), null, 4));
 
-  console.log(JSON.stringify(flow.getQueue(), null, 4));
+  console.log(JSON.stringify(flow(obj), null, 4));

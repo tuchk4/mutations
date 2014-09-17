@@ -143,7 +143,7 @@ function getFlow() {
       throw new Error('Shoule be defined on exec funciton');
     }
 
-    var queue = this.getQueue();
+    var queue = Flow.getQueue();
 
     return onExec.apply(null, [source].concat(queue));
   };
