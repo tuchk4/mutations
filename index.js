@@ -155,15 +155,19 @@ var obj = {
   }]
 };
 
-mutate.transforms.String_To_Integer = function(value){
+mutate.setConversion('String_To_Number',  function(value){
   return value + '!';
-};
+});
 
-mutate.transforms.custom = function(value){
+mutate.setConversion('Number_To_String',  function(value, obj, params){
+  return value + '@' + params.round;
+});
+
+mutate.setConversion('custom', function(value){
   
   value['test'] = 'HELLO WORLD';
   return value;
-};
+});
 
 var flow = mutate.flow
   .field('yo')
@@ -180,10 +184,25 @@ var flow = mutate.flow
       'a.b': 'a'
     }
   })
+
   .field('id')
     .rename('ID')
-    .fromType('Integer')
-    .toType('String')
+
+    .convert({
+      from: 'String',
+      to: 'Number'
+    }, {
+      round: 3
+    })
+    .convert(function(value){
+      return value  + '#';
+    })
+    .convert('String_To_Number', {
+      round: 2
+    })
+    .convert('toJSON')
+
+
   .field('name')
     .rename('Title')
   .field('params')
@@ -191,20 +210,17 @@ var flow = mutate.flow
     .child('value')
       .rename('status')
   .field('params')
-    .transform('custom')
+   // .transform('custom')
     .child('test')      
       .child('id')  
         .rename('QA')
   .then()
     .field('ID')
       .rename('ID_NEXT_LOOP')
-      .encode(function(value, row) {
-        return value + 10111;
-      })
   .then()
     .field('params')
-      .transform('toJSON');
+      .convert('toJSON');
 
  console.log(JSON.stringify(flow(obj), null, 4));
 
- //console.log(JSON.stringify(flow.getQueue(), null, 4));
+ // console.log(JSON.stringify(flow.getQueue(), null, 4));

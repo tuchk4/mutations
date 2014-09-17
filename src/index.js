@@ -2,11 +2,20 @@
 
 var isArray = require('./utils/types').isArray,
   isObject = require('./utils/types').isObject,
+  isFunction = require('./utils/types').isFunction,
+  isString = require('./utils/types').isString,
   exist = require('./utils/types').exist,
   Mutators = require('./utils/mutators'),
   Flow = require('./flow'),
-  Transforms = require('./transforms');
+  Conversions = require('./conversions');
 
+function capitalize(str) {
+  str = str.toLowerCase();
+  return str.replace(/(\b)([a-zA-Z])/g,
+    function(firstLetter) {
+      return firstLetter.toUpperCase();
+    });
+}
 
 function unique(value, index, self) {
   return self.indexOf(value) === index;
@@ -20,6 +29,17 @@ function getRule(key, rules) {
   }
 
   return rule;
+}
+
+function getType(expr) {
+  var type;
+  if (expr.hasOwnProperty('from') && expr.hasOwnProperty('to')) {;
+    type = capitalize(expr.to) + '_To_' + capitalize(expr.from);
+  } else {
+    throw new Error('Both from and to types should be defined for convert rule');
+  }
+
+  return type;
 }
 
 function parse(key, value, rules, obj) {
@@ -38,18 +58,37 @@ function parse(key, value, rules, obj) {
       value = rule.def(obj);
     }
 
-    if (rule.hasOwnProperty('encode')) {
-      value = rule.encode(value, obj);
-    }
-
     if (rule.hasOwnProperty('rename')) {
       key = rule.rename;
     }
 
-    if (rule.hasOwnProperty('transform')) {
-      var transform = rule.transform;
-      if (Mutate.transforms.hasOwnProperty(transform)) {
-        value = Mutate.transforms[transform].call(null, value, obj);
+
+    if (rule.hasOwnProperty('convert')) {
+      for (var i = 0, size = rule.convert.length; i < size; i++) {
+        var converter = rule.convert[i],
+          expr = converter[0],
+          params = converter[1];
+
+        if (isFunction(expr)) {
+          value = expr(value, obj);
+        } else if (isString(expr) || isObject(expr)) {
+
+          var type;
+          if (isObject(expr)) {
+            type = getType(expr);
+          } else {
+            type = expr;
+          }
+
+          if (Mutate.conversions.hasOwnProperty(type)) {
+            value = Mutate.conversions[type].call(null, value, obj, params);
+          } else {
+            throw new Error(type + ' convert rule is not defined');
+          }
+
+        } else {
+          throw new Error('Wrong convert rule');
+        }
       }
     }
   }
@@ -140,6 +179,14 @@ function fillDefaults(rule) {
   if (!rule.hasOwnProperty('fields')) {
     rule.fields = {};
   }
+
+  if (rule.hasOwnProperty('convert') && !isArray(rule.convert)) {
+    rule.convert = [rule.convert];
+  }
+
+  if (rule.hasOwnProperty('add') && !isArray(rule.add)) {
+    rule.add = [rule.add];
+  }
 }
 
 
@@ -188,7 +235,16 @@ Flow.onExec(function() {
   return Mutate.apply(null, arguments);
 });
 
-Mutate.transforms = Transforms;
+Mutate.conversions = Conversions;
+Mutate.setConversion = function(name, func) {
+
+  if (Mutate.conversions.hasOwnProperty(name)) {
+    console.log('Notice: Converion already exist');
+  }
+
+  Mutate.conversions[name] = func;
+}
+
 Mutate.flow = Flow;
 
 

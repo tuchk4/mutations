@@ -1,6 +1,6 @@
 "use strict";
 
-var Transforms = {
+var Conversions = {
   toJSON: function(value){
     return JSON.stringify(value);
   }
@@ -8,4 +8,4 @@ var Transforms = {
 
 
 
-module.exports = Transforms;
+module.exports = Conversions;

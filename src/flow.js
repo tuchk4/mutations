@@ -6,7 +6,6 @@ function getFlow() {
     queue = [],
     current = [],
     onExec,
-    temp = {},
     AVAILABLE_TYPES = ['transform', 'select'];
 
   function initRules() {
@@ -29,14 +28,6 @@ function getFlow() {
     }
 
     return rules.remove.length == 0 && !isExists;
-  }
-
-  function capitalize(str) {
-    str = str.toLowerCase();
-    return str.replace(/(\b)([a-zA-Z])/g,
-      function(firstLetter) {
-        return firstLetter.toUpperCase();
-      });
   }
 
   function setType(type) {
@@ -74,48 +65,20 @@ function getFlow() {
     return current[current.length - 1];
   }
 
-  function calcTransformFunc() {
-    var field = getField();
-
-    var to = temp[field].to_type;
-    var from = temp[field].from_type;
-
-    if (to && from) {
-      var type = capitalize(to) + '_To_' + capitalize(from);
-      transformField(type);
-    }
-  }
-
-  function setFromType(type) {
-    var field = getField();
-
-    if (!temp.hasOwnProperty(field)) {
-      temp[field] = {};
-    }
-
-    temp[field].from_type = type;
-    calcTransformFunc();
-  }
-
-  function setToType(type) {
-    var field = getField();
-
-    if (!temp.hasOwnProperty(field)) {
-      temp[field] = {};
-    }
-
-    temp[field].to_type = type;
-    calcTransformFunc();
-  }
-
   function addField(field) {  
     if (!rules.fields.hasOwnProperty(field)) {
       rules.fields[field] = {};
     }
   }
 
-  function transformField(key) {
-    getRule().transform = key;
+  function convertField(expression, params) {
+    var rule = getRule();
+
+    if (!rule.hasOwnProperty('convert')){
+      rule.convert = [];
+    }
+
+    rule.convert.push([expression, params]);
   }
 
   function renameField(name) {
@@ -229,28 +192,13 @@ function getFlow() {
     return this;
   };
 
-  Flow.transform = function(key) {
-    transformField(key);
-    return this;
-  };
-
-  Flow.fromType = function(type) {
-    setFromType(type);
-    return this;
-  };
-
-  Flow.toType = function(type) {
-    setToType(type);
+  Flow.convert = function(expression, params) {
+    convertField(expression, params);
     return this;
   };
 
   Flow.def = function(value) {
     setDef(value);
-    return this;
-  };
-
-  Flow.encode = function(encode) {
-    setEncode(encode);
     return this;
   };
 
