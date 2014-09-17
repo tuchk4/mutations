@@ -4,7 +4,8 @@ var isArray = require('./utils/types').isArray,
   isObject = require('./utils/types').isObject,
   exist = require('./utils/types').exist,
   Mutators = require('./utils/mutators'),
-  Flow = require('./flow');
+  Flow = require('./flow'),
+  Transforms = require('./transforms');
 
 
 function unique(value, index, self) {
@@ -21,7 +22,7 @@ function getRule(key, rules) {
   return rule;
 }
 
-function parse(key, value, rules) {
+function parse(key, value, rules, obj) {
 
   var rule = getRule(key, rules);
 
@@ -34,11 +35,11 @@ function parse(key, value, rules) {
     }
 
     if (value === undefined && rule.hasOwnProperty('def')) {
-      value = rule.def();
+      value = rule.def(obj);
     }
 
     if (rule.hasOwnProperty('encode')) {
-      value = rule.encode(value);
+      value = rule.encode(value, obj);
     }
 
     if (rule.hasOwnProperty('rename')) {
@@ -47,8 +48,8 @@ function parse(key, value, rules) {
 
     if (rule.hasOwnProperty('transform')) {
       var transform = rule.transform;
-      if (Mutate.transforms.hasOwnProperty(transform)) { 
-        value = Mutate.transforms[transform].call(null, value);
+      if (Mutate.transforms.hasOwnProperty(transform)) {
+        value = Mutate.transforms[transform].call(null, value, obj);
       }
     }
   }
@@ -60,14 +61,33 @@ function parse(key, value, rules) {
   };
 }
 
-function resolve(obj, rule) {
+function add(transformed, rule, origin) {
+
+  if (rule.hasOwnProperty('add')) {
+    for (var i = 0, size = rule.add.length; i < size; i++) {
+      var added = rule.add[i](origin);
+
+      if (!isObject(added)) {
+        throw new Error('Added value shouled be only object');
+      }
+
+      for (var id in added) {
+        if (added.hasOwnProperty(id)) {
+          Mutators.insert(transformed, id, added[id]);
+        }
+      }
+    }
+  }
+}
+
+function resolve(origin, rule) {
 
   var keys;
 
   if (rule.type == 'select') {
     keys = Object.keys(rule.fields);
   } else {
-    keys = Object.keys(obj)
+    keys = Object.keys(origin)
       .concat(Object.keys(rule.fields))
       .filter(unique);
   }
@@ -81,7 +101,7 @@ function resolve(obj, rule) {
   for (var i = 0, size = keys.length; i < size; i++) {
     var key = keys[i];
 
-    var value = Mutators.get(obj, key, rule);
+    var value = Mutators.get(origin, key, rule);
 
     if (isArray(value)) {
       var localRule = getRule(key, rule);
@@ -91,15 +111,15 @@ function resolve(obj, rule) {
       }
     }
 
-    var param = parse(key, value, rule);
+    var param = parse(key, value, rule, origin);
 
     if (exist(param.value)) {
-
       Mutators.insert(transformed, param.key, param.value);
       Mutators.clean(transformed, key);
     }
-  }
 
+    add(transformed, rule, origin);
+  }
 
   return transformed;
 }
@@ -168,7 +188,7 @@ Flow.onExec(function() {
   return Mutate.apply(null, arguments);
 });
 
-Mutate.transforms = {};
+Mutate.transforms = Transforms;
 Mutate.flow = Flow;
 
 

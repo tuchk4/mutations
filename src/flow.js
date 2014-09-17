@@ -148,6 +148,14 @@ function getFlow() {
     getRule().encode = encode;
   }
 
+  function add(func){
+    if (!rules.hasOwnProperty('add')){
+      rules.add = [];
+    }
+
+    rules.add.push(func);
+  }
+
   function isCurrentSelected() {
     if (!current) {
       throw new Error('Select field before actions');
@@ -248,6 +256,11 @@ function getFlow() {
 
   Flow.type = function(type) {
     setType(type);
+    return this;
+  };
+
+  Flow.add = function(func) {
+    add(func);
     return this;
   };
 

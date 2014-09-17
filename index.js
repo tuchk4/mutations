@@ -159,7 +159,27 @@ mutate.transforms.String_To_Integer = function(value){
   return value + '!';
 };
 
+mutate.transforms.custom = function(value){
+  
+  value['test'] = 'HELLO WORLD';
+  return value;
+};
+
 var flow = mutate.flow
+  .field('yo')
+    .def(function(){
+      return 1;
+    })
+  .add(function(){
+    return {
+      'hello.a.b.c[0].d': 'yo'
+    }
+  })
+  .add(function(){
+    return {
+      'a.b': 'a'
+    }
+  })
   .field('id')
     .rename('ID')
     .fromType('Integer')
@@ -171,16 +191,20 @@ var flow = mutate.flow
     .child('value')
       .rename('status')
   .field('params')
+    .transform('custom')
     .child('test')      
       .child('id')  
         .rename('QA')
   .then()
     .field('ID')
       .rename('ID_NEXT_LOOP')
-      .encode(function(value) {
+      .encode(function(value, row) {
         return value + 10111;
-      });
+      })
+  .then()
+    .field('params')
+      .transform('toJSON');
 
-console.log(JSON.stringify(flow(obj), null, 4));
+ console.log(JSON.stringify(flow(obj), null, 4));
 
  //console.log(JSON.stringify(flow.getQueue(), null, 4));
