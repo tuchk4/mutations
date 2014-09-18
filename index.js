@@ -155,15 +155,15 @@ var obj = {
   }]
 };
 
-mutate.setConversion('String_To_Number',  function(value){
+mutate.addConversion('String_To_Number',  function(value){
   return value + '!';
 });
 
-mutate.setConversion('Number_To_String',  function(value, obj, params){
+mutate.addConversion('Number_To_String',  function(value, obj, params){
   return value + '@' + params.round;
 });
 
-mutate.setConversion('custom', function(value){
+mutate.addConversion('custom', function(value){
   
   value['test'] = 'HELLO WORLD';
   return value;
@@ -175,6 +175,7 @@ var flow = mutate.flow
       return 1;
     })
   .add(function(){
+    console.log(1);
     return {
       'hello.a.b.c[0].d': 'yo'
     }
@@ -221,6 +222,9 @@ var flow = mutate.flow
     .field('params')
       .convert('toJSON');
 
- console.log(JSON.stringify(flow(obj), null, 4));
 
- // console.log(JSON.stringify(flow.getQueue(), null, 4));
+
+
+// console.log(JSON.stringify(flow(obj), null, 4));
+
+  console.log(JSON.stringify(flow(obj), null, 4));

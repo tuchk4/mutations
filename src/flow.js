@@ -10,24 +10,23 @@ function getFlow() {
 
   function initRules() {
     rules = {
-      remove: [],
-      fields: {},
-      type: 'transform'
+      fields: {}
     }
   }
 
-  function isEmpty(local) {
-    local = local || rules;
+  function isEmpty() {
 
     var isExists = false;
-    for (var field in local.fields) {
-      if (local.fields.hasOwnProperty(field)) {
+    for (var field in rules.fields) {
+      if (rules.fields.hasOwnProperty(field)) {
         isExists = true;
         break;
       }
     }
 
-    return rules.remove.length == 0 && !isExists;
+    var isRemoveEmpty = !rules.hasOwnProperty('remove') || rules.remove.length == 0;
+
+    return isRemoveEmpty && !isExists;
   }
 
   function setType(type) {
@@ -41,17 +40,17 @@ function getFlow() {
   function getRule(d) {
     var obj = rules;
 
-    if (arguments.length == 0){
+    if (arguments.length == 0) {
       d = 0;
-    } 
+    }
 
     for (var i = 0, size = current.length - d; i < size; i++) {
       var field = current[i];
-      if (!obj.hasOwnProperty('fields')){
+      if (!obj.hasOwnProperty('fields')) {
         obj.fields = {};
       }
 
-      if (!obj.fields.hasOwnProperty(field)){
+      if (!obj.fields.hasOwnProperty(field)) {
         obj.fields[field] = {};
       }
 
@@ -65,7 +64,7 @@ function getFlow() {
     return current[current.length - 1];
   }
 
-  function addField(field) {  
+  function addField(field) {
     if (!rules.fields.hasOwnProperty(field)) {
       rules.fields[field] = {};
     }
@@ -74,7 +73,7 @@ function getFlow() {
   function convertField(expression, params) {
     var rule = getRule();
 
-    if (!rule.hasOwnProperty('convert')){
+    if (!rule.hasOwnProperty('convert')) {
       rule.convert = [];
     }
 
@@ -93,10 +92,10 @@ function getFlow() {
     var field = getField(),
       rules = getRule(1);
 
-    if (!rules.hasOwnProperty('remove')){
+    if (!rules.hasOwnProperty('remove')) {
       rules.remove = [];
     }
-    
+
     rules.remove.push(field);
     if (rules.fields.hasOwnProperty(field)) {
       delete rules[field];
@@ -111,8 +110,8 @@ function getFlow() {
     getRule().encode = encode;
   }
 
-  function add(func){
-    if (!rules.hasOwnProperty('add')){
+  function add(func) {
+    if (!rules.hasOwnProperty('add')) {
       rules.add = [];
     }
 
@@ -140,13 +139,11 @@ function getFlow() {
   initRules();
 
   var Flow = function(source) {
-    if (!isEmpty()) {
-      Flow.then();
-    }
-
     if (!onExec) {
       throw new Error('Shoule be defined on exec funciton');
     }
+
+    var queue = Flow.getQueue();
 
     return onExec.apply(null, [source].concat(queue));
   };
@@ -156,6 +153,10 @@ function getFlow() {
   };
 
   Flow.getQueue = function() {
+    if (!isEmpty()) {
+      Flow.then();
+    }
+
     return queue;
   };
 
