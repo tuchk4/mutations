@@ -231,9 +231,6 @@ var Mutate = function(origin) {
   return obj;
 };
 
-Flow.onExec(function() {
-  return Mutate.apply(null, arguments);
-});
 
 Mutate.conversions = Conversions;
 Mutate.addConversion = function(name, func) {
@@ -245,7 +242,13 @@ Mutate.addConversion = function(name, func) {
   Mutate.conversions[name] = func;
 }
 
-Mutate.flow = Flow;
+Mutate.flow = function() {
+  var flow = Flow()
+  flow.onExec(function() {
+    return Mutate.apply(null, arguments);
+  });
+  return flow;
+};
 
 
 module.exports = Mutate;
