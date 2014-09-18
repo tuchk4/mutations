@@ -30,6 +30,10 @@ var isNumber = function(value) {
   return typeof value === 'number';
 };
 
+var isDate = function(value) {
+  return value instanceof Date;
+};
+
 var isBoolean = function(value) {
   return value === true || value === false;
 };
@@ -80,6 +84,8 @@ module.exports = {
   isArray: isArray,
   isString: isString,
   isNumber: isNumber,
+  isBoolean: isBoolean,
+  isDate: isDate,
   isFunction: isFunction(),
   exist: exist
 };

@@ -74,16 +74,16 @@ describe('Mutate', function() {
 
 
   describe('#Flow', function() {
-    it('Mutate.flow should be a function', function() {
-      expect(Mutate.flow).to.be.a('function');
+    it('Mutate.flow() should be a function', function() {
+      expect(Mutate.flow()).to.be.a('function');
     });
 
-    it('Mutate.flow should return function', function() {
-      expect(Mutate.flow.field('foo')).to.be.a('function');
+    it('Mutate.flow() should return function', function() {
+      expect(Mutate.flow().field('foo')).to.be.a('function');
     });
 
-    it('Mutate.flow.getQueue() should return mutation config', function() {
-      var flow = Mutate.flow
+    it('Mutate.flow().getQueue() should return mutation config', function() {
+      var flow = Mutate.flow()
         .field('foo')
         .rename('Foo')
         .field('bar')

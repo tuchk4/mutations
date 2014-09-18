@@ -216,4 +216,4 @@ function getFlow() {
   return Flow;
 }
 
-module.exports = getFlow();
+module.exports = getFlow;
