@@ -78,7 +78,6 @@ describe('#Convertions', function () {
     expect(cData.stringToIntegerField).to.equal(203);
     expect(cData.stringToNumberField).to.equal(711.5);
     expect(cData.stringToDateField).to.be.a(Date);
-    // expect(cData.dateToStringField).to.equal(new Date());
     expect(cData.booleanToIntegerField).to.equal(1);
   });
 });
