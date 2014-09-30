@@ -1,5 +1,5 @@
 var Origin = require('./origin'),
-  Mutate = require('../../src/index'),
+  Mutate = require('../../src/mutate'),
   expect = require('expect.js');
 
 
@@ -65,7 +65,7 @@ describe('#Mutate', function () {
       /**
        * use add for root elements
        */
-      add: function (origin) {
+      add: function (item, origin) {
         return {
           full_name: origin.name.first + ' ' + origin.name.last
         }
@@ -255,12 +255,10 @@ describe('#Mutate', function () {
     };
     var result = Mutate(Origin, rules);
 
-    console.log(result);
+
 
     expect(result).to.only.have.keys(['id', 'age', 'name', 'friends']);
-    expect(result.friends).to.have.length(1);
+    expect(result.friends).to.have.length(2);
     expect(result.name).to.only.have.keys(['first']);
-
-
   });
 });

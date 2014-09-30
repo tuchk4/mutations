@@ -5,6 +5,15 @@ var isArray = require('../utils/types').isArray,
   isFunction = require('../utils/types').isFunction,
   Mutators = require('../utils/mutators');
 
+
+function insert(added, value){
+  for (var id in added) {
+    if (added.hasOwnProperty(id)) {
+      Mutators.insert(value, id, added[id]);
+    }
+  }
+}
+
 module.exports = {
   run: function (key, value, add, origin, transformed) {
 
@@ -16,28 +25,27 @@ module.exports = {
       var expr = add[i],
         added = expr;
 
-      if (isFunction(expr)) {
-        added = expr(value, origin, transformed);
-      }
 
       if (isArray(value)) {
-        if (!isArray(added)) {
-          value.push(added);
-        } else {
-          value = value.concat(added);
-        }
-      } else if (isObject(added)) {
+        for (var j = 0, len = value.length; j < len; j++) {
+          var item = value[j];
 
-        for (var id in added) {
-          if (added.hasOwnProperty(id)) {
-            Mutators.insert(value, id, added[id]);
+          if (isFunction(expr)) {
+            added = expr(item, origin, transformed);
           }
+
+          insert(added, item);
         }
+      } else if (isObject(value)) {
+        if (isFunction(expr)) {
+          added = expr(value, origin, transformed);
+        }
+
+        insert(added, value);
       } else {
-        throw new Error('Wrong type for add value');
+        throw new Error('Wrong parent element for add rule');
       }
     }
-
 
     return {
       key: key,

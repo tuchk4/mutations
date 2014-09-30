@@ -1,19 +1,713 @@
 !function(e){if("object"==typeof exports)module.exports=e();else if("function"==typeof define&&define.amd)define(e);else{var f;"undefined"!=typeof window?f=window:"undefined"!=typeof global?f=global:"undefined"!=typeof self&&(f=self),f.mutate=e()}}(function(){var define,module,exports;return (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(_dereq_,module,exports){
 "use strict";
 
-var types = _dereq_('./utils/types');
+var isArray = _dereq_('./utils/types').isArray,
+  isObject = _dereq_('./utils/types').isObject,
+  isFunction = _dereq_('./utils/types').isFunction,
+  isString = _dereq_('./utils/types').isString,
+  exist = _dereq_('./utils/types').exist,
+  Mutators = _dereq_('./utils/mutators'),
+  Nests = _dereq_('./utils/nests'),
+  Flow = _dereq_('./flow'),
+  Steps = _dereq_('./utils/steps'),
+  Manager = _dereq_('./manager');
 
-function checkType(checkKey, value) {
-  var check = types[checkKey];
 
-  if (!check(value)) {
-    throw new TypeError('Type check failed: ' + checkKey + '(' + JSON.stringify(value) + ')');
+Manager.register('add', _dereq_('./rules/add'), 0);
+Manager.register('def', _dereq_('./rules/def'), 10);
+Manager.register('map', _dereq_('./rules/map'), 20);
+Manager.register('rename', _dereq_('./rules/rename'), 30);
+Manager.register('convert', _dereq_('./rules/convert'), 40);
+
+
+function unique(value, index, self) {
+  return self.indexOf(value) === index;
+}
+
+function extract(config) {
+  var exclude = ['fields', 'type', 'broadcast'];
+
+  return Object.keys(config).filter(function (key) {
+    return exclude.indexOf(key) == -1;
+  });
+}
+
+function convert(items) {
+  var path = Steps.get(),
+    arr = isArray(items),
+    converted = items;
+
+  if (path) {
+    if (!arr) {
+      items = [items];
+    }
+
+    converted = [];
+
+    for (var i = 0, size = items.length; i < size; i++) {
+      converted.push(path + '.' + items[i]);
+    }
+
+    if (!arr) {
+      converted = converted[0];
+    }
+  }
+
+  return converted;
+}
+
+function isRemoving(key, value) {
+  var removing = Nests.merge('remove'),
+    step = Steps.get(),
+    isRemoving = false;
+
+  for (var i = 0, size = removing.length; i < size; i++) {
+    var field = removing[i];
+    if (field.indexOf(step) == 0) {
+      if (field == step) {
+        isRemoving = true;
+      } else {
+        Mutators.remove(value, field.replace(step, ''));
+      }
+      break;
+    }
+  }
+
+  return isRemoving;
+}
+
+function resolve(origin, config) {
+
+  var transformed = {},
+    keys = [],
+    nests = {
+      broadcast: false,
+      remove: false
+    };
+
+  if (config.hasOwnProperty('broadcast')) {
+    Nests.dig('broadcast', config.broadcast);
+    nests.broadcast = true;
+  }
+
+  if (config.hasOwnProperty('remove')) {
+    Nests.dig('remove', convert(config.remove));
+    nests.remove = true;
+  }
+
+  if (config.type == 'select') {
+    keys = Object.keys(config.fields);
+  } else {
+    keys = Object.keys(origin)
+      .concat(Object.keys(config.fields))
+      .filter(unique);
+  }
+
+  var processed;
+
+  for (var i = 0, size = keys.length; i < size; i++) {
+
+    var key = keys[i],
+      clone = true,
+      value = Mutators.get(origin, key, clone);
+
+    Steps.addKey(key);
+
+    if (!isRemoving(key, value)) {
+      if (config.fields.hasOwnProperty(key)) {
+
+        var local = config.fields[key];
+
+        if (local.hasOwnProperty('fields') || local.hasOwnProperty('remove')) {
+          value = Mutate(value, local);
+        }
+
+        if (isString(local)){
+          local = {
+            rename: local
+          }
+        }
+
+        processed = acceptRules(key, value, local, transformed, origin);
+
+        key = processed.key;
+        value = processed.value;
+      }
+
+      Mutators.insert(transformed, key, value);
+    }
+
+
+    Steps.back();
+  }
+
+  if (Steps.isRoot()) {
+    processed = acceptRules(undefined, transformed, config, transformed, origin);
+    transformed = processed.value;
+  }
+
+  if (nests.broadcast) {
+    Nests.climb('broadcast');
+  }
+
+  if (nests.remove) {
+    Nests.climb('remove');
+  }
+
+  return transformed;
+}
+
+function acceptRules(key, value, config, transformed, origin) {
+
+  Manager.each(extract(config), function (rule, Source, broadcast) {
+    var params = broadcast || config[rule],
+      processed = Source.run(key, value, params, origin, transformed);
+
+    if (processed && processed.hasOwnProperty('key')) {
+      key = processed.key;
+      value = processed.value;
+    }
+  });
+
+  return {
+    key: key,
+    value: value
   }
 }
 
-var Conversions = {
-  toJSON: function(value) {
+
+function fillDefaults(config) {
+  if (!config.hasOwnProperty('fields')) {
+    config.fields = {};
+  }
+}
+
+
+var Mutate = function (origin) {
+
+  var obj = origin,
+    configs = Array.prototype.slice.call(arguments, 1),
+    i, size;
+
+
+  for (i = 0, size = configs.length; i < size; i++) {
+    var config = configs[i];
+
+    fillDefaults(config);
+
+    var transformed;
+
+    if (isArray(obj)) {
+      transformed = [];
+
+      for (i = 0, size = obj.length; i < size; i++) {
+        Steps.addIndex(i);
+
+        if (Nests.merge('remove').indexOf(Steps.get()) == -1) {
+          transformed.push(resolve(obj[i], config));
+        }
+
+        Steps.back();
+      }
+    } else {
+      transformed = resolve(obj, config);
+    }
+
+    obj = transformed;
+  }
+
+  return obj;
+};
+
+Manager.apply(Mutate);
+
+
+
+Mutate.mutators = Mutators;
+Mutate.types = {
+  isArray: isArray,
+  isObject: isObject,
+  isString: isString,
+  isFunction: isFunction
+};
+
+Mutate.flow = function () {
+  var Instance = Flow.getInstance(Manager);
+
+  Instance.onExec(function () {
+    return Mutate.apply(null, arguments);
+  });
+
+  return Instance;
+};
+
+module.exports = Mutate;
+},{"./flow":2,"./manager":3,"./rules/add":4,"./rules/convert":5,"./rules/def":6,"./rules/map":7,"./rules/rename":8,"./utils/mutators":9,"./utils/nests":10,"./utils/steps":11,"./utils/types":12}],2:[function(_dereq_,module,exports){
+'use strict';
+
+var isArray = _dereq_('./utils/types').isArray,
+  isObject = _dereq_('./utils/types').isObject,
+  Mutators = _dereq_('./utils/mutators');
+
+function getFlow() {
+
+  var rules = {},
+    queue = [],
+    current = [],
+    onExec,
+    AVAILABLE_TYPES = ['transform', 'select'];
+
+  function initRules() {
+    rules = {
+      fields: {}
+    }
+  }
+
+  function isEmpty() {
+
+    var isExists = false;
+    for (var field in rules.fields) {
+      if (rules.fields.hasOwnProperty(field)) {
+        isExists = true;
+        break;
+      }
+    }
+
+    var isRemoveEmpty = !rules.hasOwnProperty('remove') || rules.remove.length == 0;
+
+    return isRemoveEmpty && !isExists;
+  }
+
+  function getRule(d) {
+    var obj = rules;
+
+    if (arguments.length == 0) {
+      d = 0;
+    }
+
+    for (var i = 0, size = current.length - d; i < size; i++) {
+      var field = current[i];
+      if (!obj.hasOwnProperty('fields')) {
+        obj.fields = {};
+      }
+
+      if (!obj.fields.hasOwnProperty(field)) {
+        obj.fields[field] = {};
+      }
+
+      obj = obj.fields[field];
+    }
+
+    return obj;
+  }
+
+  function getField() {
+    return current[current.length - 1];
+  }
+
+
+  function isCurrentSelected() {
+    if (!current) {
+      throw new Error('Select field before actions');
+    }
+  }
+
+  function addField(field) {
+    if (!rules.fields.hasOwnProperty(field)) {
+      rules.fields[field] = {};
+    }
+  }
+
+  function pushQueue() {
+    queue.push(rules);
+  }
+
+  initRules();
+
+  var Flow = function (source) {
+    if (!onExec) {
+      throw new Error('Should be defined on exec function');
+    }
+
+    var queue = Flow.getQueue();
+
+    return onExec.apply(null, [source].concat(queue));
+  };
+
+  Flow.onExec = function (on) {
+    onExec = on;
+  };
+
+  Flow.getQueue = function () {
+    if (!isEmpty()) {
+      Flow.then();
+    }
+
+    return queue;
+  };
+
+  /**
+   * Default Flow methods
+   */
+  Flow.type = function (type) {
+    if (AVAILABLE_TYPES.indexOf(type) == -1) {
+      throw new Error('Unsupported transform type');
+    }
+
+    rules.type = type;
+
+    return this;
+  };
+
+
+  Flow.then = function () {
+    pushQueue();
+    initRules();
+    return this;
+  };
+
+  Flow.field = function (field) {
+    addField(field);
+    current = [field];
+
+    return this;
+  };
+
+  Flow.child = function (field) {
+    current.push(field);
+
+    return this;
+  };
+
+  Flow.remove = function (field) {
+    isCurrentSelected();
+
+    field = field || getField();
+
+    var rule;
+
+    if (!!arguments.length) {
+      rule = rules;
+    } else {
+      rule = getRule(1);
+    }
+
+
+    if (!rule.hasOwnProperty('remove')) {
+      rule.remove = [];
+    }
+
+    if (isArray(field)) {
+      rule.remove = rules.remove.concat(field);
+    } else {
+      rule.remove.push(field);
+    }
+
+    Mutators.remove(rule, 'fields.' + field);
+
+    return this;
+  };
+
+  Flow.broadcast = function () {
+    isCurrentSelected();
+
+    var rule = getRule();
+
+    if (arguments.length == 2) {
+      if (!isObject(rule.broadcast)) {
+        rule.broadcast = {};
+      }
+
+      rule.broadcast[arguments[0]] = arguments[1];
+    } else if (isObject(arguments[0])) {
+      rule.broadcast = arguments[0];
+    } else {
+      throw new Error('Wrong broadcast parameters')
+    }
+
+    return this;
+  };
+
+  return {
+    getRule: getRule,
+    getField: getField,
+    instance: Flow,
+    isCurrentSelected: isCurrentSelected
+  }
+}
+
+
+module.exports = {
+  getInstance: function (Manager) {
+    var Flow = getFlow(),
+      Instance = Flow.instance;
+
+    Manager.eachSource(function (name, Source) {
+      if (Source.hasOwnProperty('flow')) {
+        Instance[name] = function () {
+          Flow.isCurrentSelected();
+          var expr = Source.flow(Flow.getRule(), Flow.getField());
+          expr.apply(Source, arguments);
+
+          return Instance;
+        }
+      }
+    });
+
+    return Instance;
+  }
+};
+
+},{"./utils/mutators":9,"./utils/types":12}],3:[function(_dereq_,module,exports){
+'use strict';
+
+var isObject = _dereq_('./utils/types').isObject,
+  isFunction = _dereq_('./utils/types').isFunction,
+  isArray = _dereq_('./utils/types').isArray,
+  Map = _dereq_('./utils/mutators').map,
+  Nests = _dereq_('./utils/nests');
+
+
+function unique(value, index, self) {
+  return self.indexOf(value) === index;
+}
+
+var Manager = {
+  rules: [],
+
+  register: function (key, rule, priority) {
+    priority = parseInt(priority, 10) || 0;
+
+    if (this.rules.hasOwnProperty(key)) {
+      throw new Error('Rule already added');
+    }
+
+    this.rules[key] = {
+      rule: key,
+      source: rule,
+      priority: priority
+    };
+  },
+
+  has: function (key) {
+    return this.rules.hasOwnProperty(key);
+  },
+
+  eachSource: function (expr) {
+    for (var rule in this.rules) {
+      if (this.rules.hasOwnProperty(rule)) {
+        expr(rule, this.rules[rule].source);
+      }
+    }
+  },
+
+  each: function () {
+    var expr,
+      available = [];
+
+    if (arguments.length == 1) {
+      expr = arguments[0];
+    } else if (arguments.length == 2) {
+      available = arguments[0];
+      expr = arguments[1];
+    }
+
+    var list = [],
+      rule, i, size;
+
+    for (rule in this.rules) {
+      if (this.rules.hasOwnProperty(rule) && (available.length && available.indexOf(rule) != -1)) {
+        list.push(this.rules[rule]);
+      }
+    }
+
+
+    var broadcasts = Nests.collect('broadcast');
+    for (i = 0, size = broadcasts.length; i < size; i++) {
+      var rules = broadcasts[i];
+      for (rule in rules) {
+        if (rules.hasOwnProperty(rule)) {
+
+          if (!this.rules.hasOwnProperty(rule)) {
+            throw new Error('Rule ' + rule + ' is not registered. Defined at broadcast config)');
+          }
+
+          list.push({
+            rule: rule,
+            source: this.rules[rule].source,
+            priority: this.rules[rule].priority,
+            broadcast: rules[rule]
+          });
+        }
+      }
+    }
+
+
+    list.sort(function (a, b) {
+      return a.priority - b.priority;
+    });
+
+    for (i = 0, size = list.length; i < size; i++) {
+      var config = list[i];
+
+      expr(config.rule, config.source, config.broadcast);
+    }
+  },
+
+
+  apply: function (Src) {
+    this.eachSource(function (name, Source) {
+      var exports = Source.exports;
+
+
+      if (isObject(exports)) {
+        for (var method in exports) {
+          if (exports.hasOwnProperty(method)) {
+            if (Src.hasOwnProperty(method)) {
+              console.info('Export method already exists');
+            }
+
+            Src[method] = exports[method];
+          }
+        }
+      } else if (isFunction(exports)) {
+        Src[name] = exports;
+      }
+    });
+  }
+};
+
+module.exports = Manager;
+},{"./utils/mutators":9,"./utils/nests":10,"./utils/types":12}],4:[function(_dereq_,module,exports){
+'use strict';
+
+var isArray = _dereq_('../utils/types').isArray,
+  isObject = _dereq_('../utils/types').isObject,
+  isFunction = _dereq_('../utils/types').isFunction,
+  Mutators = _dereq_('../utils/mutators');
+
+
+function insert(added, value){
+  for (var id in added) {
+    if (added.hasOwnProperty(id)) {
+      Mutators.insert(value, id, added[id]);
+    }
+  }
+}
+
+module.exports = {
+  run: function (key, value, add, origin, transformed) {
+
+    if (!isArray(add)) {
+      add = [add];
+    }
+
+    for (var i = 0, size = add.length; i < size; i++) {
+      var expr = add[i],
+        added = expr;
+
+
+      if (isArray(value)) {
+        for (var j = 0, len = value.length; j < len; j++) {
+          var item = value[j];
+
+          if (isFunction(expr)) {
+            added = expr(item, origin, transformed);
+          }
+
+          insert(added, item);
+        }
+      } else if (isObject(value)) {
+        if (isFunction(expr)) {
+          added = expr(value, origin, transformed);
+        }
+
+        insert(added, value);
+      } else {
+        throw new Error('Wrong parent element for add rule');
+      }
+    }
+
+    return {
+      key: key,
+      value: value
+    }
+  },
+
+  flow: function (Rule) {
+
+    return function () {
+      if (!Rule.hasOwnProperty('add')) {
+        Rule.add = [];
+      }
+
+      var expr = arguments[0];
+      if (arguments.length == 2) {
+        expr = {};
+        expr[arguments[0]] = arguments[1];
+      }
+
+      Rule.add.push(expr);
+    }
+  }
+};
+
+
+},{"../utils/mutators":9,"../utils/types":12}],5:[function(_dereq_,module,exports){
+'use strict';
+
+var Types = _dereq_('../utils/types');
+
+
+function capitalize(str) {
+  str = str.toLowerCase();
+  return str.replace(/(\b)([a-zA-Z])/g,
+    function (firstLetter) {
+      return firstLetter.toUpperCase();
+    });
+}
+
+
+function getType(expr) {
+  var type;
+  if (expr.hasOwnProperty('from') && expr.hasOwnProperty('to')) {
+
+    type = capitalize(expr.from) + '_To_' + capitalize(expr.to);
+  } else {
+    throw new Error('Both from and to types should be defined for convert rule');
+  }
+
+  return type;
+}
+
+
+function err(checkKey, value){
+  throw new TypeError('Type check failed: ' + checkKey + '(' + JSON.stringify(value) + ')');
+}
+
+function checkType(checkKey, value) {
+  var check = Types[checkKey];
+
+  if (!check(value)) {
+    err(checkKey, value);
+  }
+}
+
+var conversions =  {
+  Any_To_Json: function(value) {
     return JSON.stringify(value);
+  },
+
+  Array_To_Json: function(value) {
+    checkType('isArray', value);
+    return this.Any_To_Json(value);
+  },
+
+  Object_To_Json: function(value) {
+    if (!Types.isObject(value) || Types.isArray(value)){
+      err('isObject and !isArray', value);
+    }
+    return this.Any_To_Json(value);
   },
 
   Number_To_String: function(value) {
@@ -54,523 +748,282 @@ var Conversions = {
   Boolean_To_Integer: function(value) {
     checkType('isBoolean', value);
     return +value;
+  }
+};
+
+module.exports = {
+
+  exports: {
+    addConversion: function (name, func) {
+      if (conversions.hasOwnProperty(name)) {
+        console.log('Notice: Conversion already exist');
+      }
+
+      conversions[name] = func;
+    }
   },
+
+  run: function (key, value, convert, origin, transformed) {
+    if (!Types.isArray(convert)) {
+      convert = [convert];
+    }
+
+    var converted = value;
+
+    for (var i = 0, size = convert.length; i < size; i++) {
+      var converter = convert[i];
+
+      if (Types.isFunction(converter)) {
+        converted = converter(converted, origin, transformed);
+
+      } else if (Types.isString(converter) || Types.isObject(converter) || Types.isArray(converter)) {
+        var expr = converter,
+          params = undefined;
+
+        if (Types.isArray(converter)) {
+          expr = converter[0];
+          params = converter[1];
+        }
+
+        var type;
+        if (Types.isObject(expr)) {
+
+          type = getType(expr);
+        } else {
+          type = expr;
+        }
+
+        if (conversions.hasOwnProperty(type)) {
+          converted = conversions[type].call(null, converted, origin, params);
+        } else {
+          throw new Error(type + ' convert rule is not defined');
+        }
+
+      } else {
+        throw new Error('Wrong convert rule');
+      }
+    }
+
+
+
+    return {
+      key: key,
+      value: converted
+    }
+  },
+
+  flow: function (Rule) {
+
+
+    return function (expr, params) {
+      if (!Rule.hasOwnProperty('convert')) {
+        Rule.convert = [];
+      }
+
+      if (Types.isFunction(expr)){
+        Rule.convert.push(expr);
+      } else {
+        Rule.convert.push([expr, params]);
+      }
+    }
+  }
 };
 
 
+},{"../utils/types":12}],6:[function(_dereq_,module,exports){
+'use strict';
 
-module.exports = Conversions;
-},{"./utils/types":5}],2:[function(_dereq_,module,exports){
-"use strict";
+var isFunction = _dereq_('../utils/types').isFunction;
 
-var isArray = _dereq_('./utils/types').isArray,
-  isObject = _dereq_('./utils/types').isObject,
-  isFunction = _dereq_('./utils/types').isFunction,
-  isString = _dereq_('./utils/types').isString,
-  exist = _dereq_('./utils/types').exist,
-  Mutators = _dereq_('./utils/mutators'),
-  Flow = _dereq_('./flow'),
-  Conversions = _dereq_('./conversions');
+module.exports = {
 
-function capitalize(str) {
-  str = str.toLowerCase();
-  return str.replace(/(\b)([a-zA-Z])/g,
-    function(firstLetter) {
-      return firstLetter.toUpperCase();
-    });
-}
+  run: function (key, value, def, origin, transformed) {
 
-function unique(value, index, self) {
-  return self.indexOf(value) === index;
-}
-
-function getRule(key, rules) {
-  var rule = null;
-
-  if (rules.hasOwnProperty('fields') && rules.fields.hasOwnProperty(key)) {
-    rule = rules.fields[key];
-  }
-
-  return rule;
-}
-
-function getType(expr) {
-  var type;
-  if (expr.hasOwnProperty('from') && expr.hasOwnProperty('to')) {;
-    type = capitalize(expr.from) + '_To_' + capitalize(expr.to);
-  } else {
-    throw new Error('Both from and to types should be defined for convert rule');
-  }
-
-  return type;
-}
-
-function parse(key, value, rules, obj) {
-
-  var rule = getRule(key, rules);
-
-  if (rule) {
-
-    if (!isObject(rule)) {
-      rule = {
-        rename: rule
-      };
-    }
-
-    if (value === undefined && rule.hasOwnProperty('def')) {
-      value = rule.def(obj);
-    }
-
-    if (rule.hasOwnProperty('rename')) {
-      key = rule.rename;
-    }
-
-
-    if (rule.hasOwnProperty('convert')) {
-      for (var i = 0, size = rule.convert.length; i < size; i++) {
-        var converter = rule.convert[i],
-          expr = converter[0],
-          params = converter[1];
-
-        if (isFunction(expr)) {
-          value = expr(value, obj);
-        } else if (isString(expr) || isObject(expr)) {
-
-          var type;
-          if (isObject(expr)) {
-            type = getType(expr);
-          } else {
-            type = expr;
-          }
-
-          if (Mutate.conversions.hasOwnProperty(type)) {
-            value = Mutate.conversions[type].call(null, value, obj, params);
-          } else {
-            throw new Error(type + ' convert rule is not defined');
-          }
-
-        } else {
-          throw new Error('Wrong convert rule');
-        }
+    if (value === undefined) {
+      if (isFunction(def)){
+        value = def(origin, transformed);
+      } else {
+        value = def;
       }
     }
-  }
 
+    return {
+      key: key,
+      value: value
+    }
+  },
 
-  return {
-    key: key,
-    value: value
-  };
-}
-
-function add(transformed, rule, origin) {
-
-  if (rule.hasOwnProperty('add')) {
-    for (var i = 0, size = rule.add.length; i < size; i++) {
-      var added = rule.add[i](origin);
-
-      if (!isObject(added)) {
-        throw new Error('Added value shouled be only object');
-      }
-
-      for (var id in added) {
-        if (added.hasOwnProperty(id)) {
-          Mutators.insert(transformed, id, added[id]);
-        }
-      }
+  flow: function (Rule) {
+    return function (expr) {
+      Rule.def = expr;
     }
   }
-}
+};
 
-function resolve(origin, rule) {
 
-  var keys;
+},{"../utils/types":12}],7:[function(_dereq_,module,exports){
+'use strict';
 
-  if (rule.type == 'select') {
-    keys = Object.keys(rule.fields);
-  } else {
-    keys = Object.keys(origin)
-      .concat(Object.keys(rule.fields))
-      .filter(unique);
+var Map = _dereq_('../utils/mutators').map;
+
+
+module.exports = {
+
+  run: function(key, value, mapId, origin, transformed){
+    return {
+      key: key,
+      value: Map(value, mapId)
+    }
+  },
+
+  flow: function(Rule){
+
+    return function(field){
+      Rule.map = field;
+    }
   }
+};
 
-  keys = keys.filter(function(key) {
-    return rule.remove.indexOf(key) == -1;
-  });
 
+},{"../utils/mutators":9}],8:[function(_dereq_,module,exports){
+'use strict';
+
+var isObject = _dereq_('../utils/types').isObject,
+  isArray = _dereq_('../utils/types').isArray;
+
+var methods = {
+  uppercase: function (key) {
+    return key.toUpperCase();
+  },
+
+  lowercase: function (key) {
+    return key.toLowerCase();
+  }
+};
+
+
+function renameObject(method, origin) {
   var transformed = {};
 
-  for (var i = 0, size = keys.length; i < size; i++) {
-    var key = keys[i];
+  for (var attr in origin) {
+    if (origin.hasOwnProperty(attr)) {
 
-    var value = Mutators.get(origin, key, rule);
+      var rename = method(attr);
 
-    if (isArray(value)) {
-      var localRule = getRule(key, rule);
-
-      if (localRule) {
-        value = Mutate(value, localRule);
+      if (isObject(origin[attr]) && !isArray(origin[attr])) {
+        transformed[rename] = renameObject(method, origin[attr]);
+      } else {
+        transformed[rename] = origin[attr];
       }
     }
-
-    var param = parse(key, value, rule, origin);
-
-    if (exist(param.value)) {
-      Mutators.insert(transformed, param.key, param.value);
-      Mutators.clean(transformed, key);
-    }
   }
-
-  add(transformed, rule, origin);
 
   return transformed;
 }
 
-function isValid(rule) {
-  return !rule.hasOwnProperty('fields') || !rule.hasOwnProperty('exclude') || !['select', 'transform'].hasOwnProperty(rule.type);
-}
 
-function fillDefaults(rule) {
-  if (!rule.hasOwnProperty('remove')) {
-    rule.remove = [];
-  }
+module.exports = {
+  exports: {
+    addRenameMethod: function (key, method) {
+      if (methods.hasOwnProperty(key)) {
+        console.log('Notice: Rename method already exist');
+      }
+      methods[key] = method;
+    }
+  },
 
-  if (!rule.hasOwnProperty('type')) {
-    rule.type = 'transform';
-  }
+  run: function (key, value, config, origin, transformed) {
 
-  if (!rule.hasOwnProperty('fields')) {
-    rule.fields = {};
-  }
+    /**
+     * If not root element
+     */
+    if (key !== undefined) {
+      var rename = config,
+        expr;
 
-  if (rule.hasOwnProperty('convert') && !isArray(rule.convert)) {
-    rule.convert = [rule.convert];
-  }
+      if (config[0] == ':') {
+        expr = config.slice(1);
 
-  if (rule.hasOwnProperty('add') && !isArray(rule.add)) {
-    rule.add = [rule.add];
-  }
-}
+        if (!methods.hasOwnProperty(expr)) {
+          throw new Error('Rename method does not exist');
+        }
 
+        rename = methods[expr](key);
+      } else if (config[0] == '*') {
+        expr = config.slice(1);
 
-var Mutate = function(origin) {
+        if (!methods.hasOwnProperty(expr)) {
+          throw new Error('Rename method does not exist');
+        }
 
-  var obj = origin,
-    rules = Array.prototype.slice.call(arguments, 1);
+        rename = methods[expr](key);
+        if (isObject(value)) {
+          var renamed;
 
-  for (var i = 0, size = rules.length; i < size; i++) {
+          if (isArray(value)) {
+            renamed = [];
+            for (var i = 0, size = value.length; i < size; i++) {
+              renamed[i] = renameObject(methods[expr], value[i]);
+            }
+          } else {
+            renamed = renameObject(methods[expr], value);
+          }
 
-    var rule = rules[i];
-
-    if (!isObject(obj) || !isValid(rule)) {
-      throw new Error('Invalid parameters');
+          value = renamed;
+        }
+      }
     }
 
-    fillDefaults(rule);
-
-    var params;
-
-    if (isArray(obj)) {
-      var transformed = [];
-
-      for (var i = 0, size = obj.length; i < size; i++) {
-        transformed.push(
-          resolve(obj[i], rule)
-        );
-      }
-
-      if (rule.hasOwnProperty('map')) {
-        params = Mutators.map(transformed, rule.map);
-      } else {
-        params = transformed;
-      }
-    } else {
-      params = resolve(obj, rule);
+    return {
+      key: rename,
+      value: value
     }
+  },
 
-    obj = params;
+  flow: function (Rule, Flow) {
+    return function (name) {
+      Rule.rename = name;
+    }
   }
-
-  return obj;
 };
 
 
-Mutate.conversions = Conversions;
-Mutate.addConversion = function(name, func) {
-
-  if (Mutate.conversions.hasOwnProperty(name)) {
-    console.log('Notice: Converion already exist');
-  }
-
-  Mutate.conversions[name] = func;
-}
-
-Mutate.flow = function() {
-  var flow = Flow()
-  flow.onExec(function() {
-    return Mutate.apply(null, arguments);
-  });
-  return flow;
-};
-
-
-module.exports = Mutate;
-},{"./conversions":1,"./flow":3,"./utils/mutators":4,"./utils/types":5}],3:[function(_dereq_,module,exports){
-"use strict";
-
-function getFlow() {
-
-  var rules = {},
-    queue = [],
-    current = [],
-    onExec,
-    AVAILABLE_TYPES = ['transform', 'select'];
-
-  function initRules() {
-    rules = {
-      fields: {}
-    }
-  }
-
-  function isEmpty() {
-
-    var isExists = false;
-    for (var field in rules.fields) {
-      if (rules.fields.hasOwnProperty(field)) {
-        isExists = true;
-        break;
-      }
-    }
-
-    var isRemoveEmpty = !rules.hasOwnProperty('remove') || rules.remove.length == 0;
-
-    return isRemoveEmpty && !isExists;
-  }
-
-  function setType(type) {
-    if (AVAILABLE_TYPES.indexOf(type) == -1) {
-      throw new Error('Unssported tranform type');
-    }
-
-    rules.type = type;
-  }
-
-  function getRule(d) {
-    var obj = rules;
-
-    if (arguments.length == 0) {
-      d = 0;
-    }
-
-    for (var i = 0, size = current.length - d; i < size; i++) {
-      var field = current[i];
-      if (!obj.hasOwnProperty('fields')) {
-        obj.fields = {};
-      }
-
-      if (!obj.fields.hasOwnProperty(field)) {
-        obj.fields[field] = {};
-      }
-
-      obj = obj.fields[field];
-    }
-
-    return obj;
-  }
-
-  function getField() {
-    return current[current.length - 1];
-  }
-
-  function addField(field) {
-    if (!rules.fields.hasOwnProperty(field)) {
-      rules.fields[field] = {};
-    }
-  }
-
-  function convertField(expression, params) {
-    var rule = getRule();
-
-    if (!rule.hasOwnProperty('convert')) {
-      rule.convert = [];
-    }
-
-    rule.convert.push([expression, params]);
-  }
-
-  function renameField(name) {
-    getRule().rename = name;
-  }
-
-  function mapArray(key) {
-    getRule().map = key;
-  }
-
-  function removeField() {
-    var field = getField(),
-      rules = getRule(1);
-
-    if (!rules.hasOwnProperty('remove')) {
-      rules.remove = [];
-    }
-
-    rules.remove.push(field);
-    if (rules.fields.hasOwnProperty(field)) {
-      delete rules[field];
-    }
-  }
-
-  function setDef(def) {
-    getRule().def = def;
-  }
-
-  function setEncode(encode) {
-    getRule().encode = encode;
-  }
-
-  function add(func) {
-    if (!rules.hasOwnProperty('add')) {
-      rules.add = [];
-    }
-
-    rules.add.push(func);
-  }
-
-  function isCurrentSelected() {
-    if (!current) {
-      throw new Error('Select field before actions');
-    }
-  }
-
-  function selectField(field) {
-    current = [field];
-  }
-
-  function selectChild(field) {
-    current.push(field);
-  }
-
-  function pushQueue() {
-    queue.push(rules);
-  }
-
-  initRules();
-
-  var Flow = function(source) {
-    if (!onExec) {
-      throw new Error('Shoule be defined on exec funciton');
-    }
-
-    var queue = Flow.getQueue();
-
-    return onExec.apply(null, [source].concat(queue));
-  };
-
-  Flow.onExec = function(on) {
-    onExec = on;
-  };
-
-  Flow.getQueue = function() {
-    if (!isEmpty()) {
-      Flow.then();
-    }
-
-    return queue;
-  };
-
-  Flow.field = function(field) {
-    addField(field);
-    selectField(field);
-    return this;
-  };
-
-  Flow.child = function(field) {
-    selectChild(field);
-    return this;
-  };
-
-  Flow.remove = function() {
-    isCurrentSelected();
-    removeField();
-    return this;
-  };
-
-  Flow.rename = function(name) {
-    renameField(name);
-    return this;
-  };
-
-  Flow.map = function(key) {
-    mapArray(key);
-    return this;
-  };
-
-  Flow.then = function() {
-    pushQueue();
-    initRules();
-    return this;
-  };
-
-  Flow.convert = function(expression, params) {
-    convertField(expression, params);
-    return this;
-  };
-
-  Flow.def = function(value) {
-    setDef(value);
-    return this;
-  };
-
-  Flow.type = function(type) {
-    setType(type);
-    return this;
-  };
-
-  Flow.add = function(func) {
-    add(func);
-    return this;
-  };
-
-  return Flow;
-}
-
-module.exports = getFlow;
-},{}],4:[function(_dereq_,module,exports){
+},{"../utils/types":12}],9:[function(_dereq_,module,exports){
 'use strict';
 var isArray = _dereq_('./types').isArray,
   exist = _dereq_('./types').exist,
   re = /(\w+)|(\[\d+\])/g;
 
-module.exports = {
+var Mutators = {
 
-  getPart: function getPart(key){
+  getPart: function getPart(key) {
     var sliced = key.slice(1).slice(0, -1);
 
-    if (key[0] == '[' && key[key.length - 1] == ']' && sliced % 1 == 0){
+    if (key[0] == '[' && key[key.length - 1] == ']' && sliced % 1 == 0) {
       key = sliced;
     }
 
     return key;
   },
 
-  get: function get(obj, path){
+  get: function get(obj, path) {
     var parts = path.match(re),
       current = obj;
 
     for (var i = 0, size = parts.length; i < size; ++i) {
       var part = this.getPart(parts[i]);
 
-      if(current[part] === undefined) {
+      if (current[part] === undefined) {
         return undefined;
       } else {
         current = current[part];
       }
     }
 
-    return current;
+    return this.clone(current);
   },
 
-  insert: function insert(obj, key, value){
+  insert: function insert(obj, key, value) {
     var parts = key.match(/(\w+)|(\[\d+\])/g);
 
     for (var i = 0, size = parts.length; i < size - 1; i++) {
@@ -578,12 +1031,12 @@ module.exports = {
         next,
         isArray;
 
-      if (size - 1 != 0){
+      if (size - 1 != 0) {
         next = this.getPart(parts[i + 1]);
         isArray = next % 1 == 0;
       }
 
-      if (obj[part] === undefined){
+      if (obj[part] === undefined) {
         obj[part] = isArray ? [] : {};
       }
 
@@ -593,10 +1046,10 @@ module.exports = {
     obj[this.getPart(parts[parts.length - 1])] = value;
   },
 
-  clean: function(obj, path){
+  clean: function (obj, path) {
     var parts = path.match(re);
 
-    for (var i = 0, size = parts.length; i < size; i++){
+    for (var i = 0, size = parts.length; i < size; i++) {
       var part = this.getPart(parts[i]);
 
       if (obj.hasOwnProperty(part)) {
@@ -608,13 +1061,13 @@ module.exports = {
     }
   },
 
-  remove: function remove(obj, path){
+  remove: function remove(obj, path) {
 
     var parts = path.match(re),
       last = this.getPart(parts.pop()),
       isExist = true;
 
-    for (var i = 0, size = parts.length; i < size; i++){
+    for (var i = 0, size = parts.length; i < size; i++) {
       var part = this.getPart(parts[i]);
 
       if (obj.hasOwnProperty(part)) {
@@ -630,8 +1083,8 @@ module.exports = {
       }
     }
 
-    if (isExist){
-      if (last % 1 == 0){
+    if (isExist) {
+      if (last % 1 == 0) {
         obj.splice(last, 1);
       } else {
         delete obj[last];
@@ -639,25 +1092,185 @@ module.exports = {
     }
   },
 
-  map: function map(data, field){
-    if (!isArray(data) && field){
+  map: function map(data, field) {
+    if (!isArray(data) && field) {
       throw new Error('Map is available only for arrays');
     }
 
     var mapped = {};
 
-    for (var i = 0, size = data.length; i < size; i++){
-      if (!data[i].hasOwnProperty(field)){
-        throw new Error('Map field does not exist in the object');
-      }    
+    for (var i = 0, size = data.length; i < size; i++) {
+      if (!data[i].hasOwnProperty(field)) {
+        throw new Error('Map field ' + field + ' does not exist in the object');
+      }
 
       mapped[data[i][field]] = data[i];
     }
 
     return mapped;
+  },
+
+  merge: function (a, b) {
+    var merged = {},
+      attr;
+    for (attr in a) {
+      if (a.hasOwnProperty(attr)) {
+        merged[attr] = a[attr];
+      }
+    }
+    for (attr in b) {
+      if (b.hasOwnProperty(attr)) {
+        merged[attr] = b[attr];
+      }
+    }
+    return merged;
+  },
+
+  clone: function (obj) {
+    var copy;
+
+    if (null == obj || "object" != typeof obj) {
+      return obj;
+    }
+
+    if (obj instanceof Date) {
+      copy = new Date();
+      copy.setTime(obj.getTime());
+      return copy;
+    }
+
+    if (obj instanceof Array) {
+      copy = [];
+      for (var i = 0, len = obj.length; i < len; i++) {
+        copy[i] = this.clone(obj[i]);
+      }
+      return copy;
+    }
+
+    if (obj instanceof Object) {
+      copy = {};
+      for (var attr in obj) {
+        if (obj.hasOwnProperty(attr)) copy[attr] = this.clone(obj[attr]);
+      }
+      return copy;
+    }
+
+    throw new Error("Unable to copy obj");
   }
 };
-},{"./types":5}],5:[function(_dereq_,module,exports){
+
+module.exports = Mutators;
+},{"./types":12}],10:[function(_dereq_,module,exports){
+'use strict';
+
+var Nests ={
+  items: {},
+
+  dig: function (key, config) {
+    if (!this.items.hasOwnProperty(key)){
+      this.items[key] = [];
+    }
+
+    this.items[key].push(config);
+  },
+
+  climb: function (key) {
+    this.items[key].pop();
+  },
+
+  reset: function (key) {
+    if (key){
+      this.items[key] = [];
+    } else {
+      this.items = {};
+    }
+  },
+
+  collect: function (key) {
+    var results;
+
+    if (key){
+      results = this.items[key];
+    } else {
+      results = this.items;
+    }
+
+    return results || [];
+  },
+
+  merge: function(key){
+    var items = this.collect(key),
+      results = [];
+
+    for (var i = 0, size = items.length; i < size; i++){
+      results = results.concat(items[i]);
+    }
+
+    return results;
+  }
+};
+
+
+module.exports = Nests;
+},{}],11:[function(_dereq_,module,exports){
+'use strict';
+
+
+var Steps  = {
+  path: [],
+
+  back: function () {
+   this.path.pop();
+  },
+
+  addKey: function (key) {
+    this.path.push({
+      value: key,
+      type: 'key'
+    });
+  },
+
+  addIndex: function (i) {
+    this.path.push({
+      value: i,
+      type: 'index'
+    });
+  },
+
+  clear: function () {
+    this.path = [];
+  },
+
+  get: function (income) {
+    var path = '',
+      storage = income || this.path;
+
+    for (var i = 0, size = storage.length; i < size; i++) {
+      var item = storage[i];
+
+      if (item.type == 'key') {
+        if (i == 0) {
+          path = item.value;
+        } else {
+          path += '.' + item.value;
+        }
+      } else if (item.type == 'index') {
+        path += '[' + item.value + ']';
+      }
+    }
+
+    return path;
+  },
+
+  isRoot: function(){
+    return !this.path.length;
+  }
+};
+
+
+module.exports = Steps;
+
+},{}],12:[function(_dereq_,module,exports){
 "use strict";
 
 var objectTypes = {
@@ -749,6 +1362,6 @@ module.exports = {
   isFunction: isFunction(),
   exist: exist
 };
-},{}]},{},[2])
-(2)
+},{}]},{},[1])
+(1)
 });

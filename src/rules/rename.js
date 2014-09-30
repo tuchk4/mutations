@@ -14,15 +14,15 @@ var methods = {
 };
 
 
-function renameObject(method, origin){
+function renameObject(method, origin) {
   var transformed = {};
 
-  for (var attr in origin){
-    if (origin.hasOwnProperty(attr)){
+  for (var attr in origin) {
+    if (origin.hasOwnProperty(attr)) {
 
       var rename = method(attr);
 
-      if (isObject(origin[attr]) && !isArray(origin[attr])){
+      if (isObject(origin[attr]) && !isArray(origin[attr])) {
         transformed[rename] = renameObject(method, origin[attr]);
       } else {
         transformed[rename] = origin[attr];
@@ -45,38 +45,44 @@ module.exports = {
   },
 
   run: function (key, value, config, origin, transformed) {
-    var rename = config,
-      expr;
 
-    if (config[0] == ':') {
-      expr = config.slice(1);
+    /**
+     * If not root element
+     */
+    if (key !== undefined) {
+      var rename = config,
+        expr;
 
-      if (!methods.hasOwnProperty(expr)) {
-        throw new Error('Rename method does not exist');
-      }
+      if (config[0] == ':') {
+        expr = config.slice(1);
 
-      rename = methods[expr](key);
-    } else if (config[0] == '*') {
-      expr = config.slice(1);
-
-      if (!methods.hasOwnProperty(expr)) {
-        throw new Error('Rename method does not exist');
-      }
-
-      rename = methods[expr](key);
-      if (isObject(value)){
-        var renamed;
-
-        if (isArray(value)){
-          renamed = [];
-           for (var i = 0, size = value.length; i < size; i++){
-             renamed[i] = renameObject(methods[expr], value[i]);
-           }
-        } else {
-          renamed = renameObject(methods[expr], value);
+        if (!methods.hasOwnProperty(expr)) {
+          throw new Error('Rename method does not exist');
         }
 
-        value = renamed;
+        rename = methods[expr](key);
+      } else if (config[0] == '*') {
+        expr = config.slice(1);
+
+        if (!methods.hasOwnProperty(expr)) {
+          throw new Error('Rename method does not exist');
+        }
+
+        rename = methods[expr](key);
+        if (isObject(value)) {
+          var renamed;
+
+          if (isArray(value)) {
+            renamed = [];
+            for (var i = 0, size = value.length; i < size; i++) {
+              renamed[i] = renameObject(methods[expr], value[i]);
+            }
+          } else {
+            renamed = renameObject(methods[expr], value);
+          }
+
+          value = renamed;
+        }
       }
     }
 

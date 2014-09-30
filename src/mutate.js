@@ -121,6 +121,12 @@ function resolve(origin, config) {
           value = Mutate(value, local);
         }
 
+        if (isString(local)){
+          local = {
+            rename: local
+          }
+        }
+
         processed = acceptRules(key, value, local, transformed, origin);
 
         key = processed.key;
@@ -135,7 +141,6 @@ function resolve(origin, config) {
   }
 
   if (Steps.isRoot()) {
-
     processed = acceptRules(undefined, transformed, config, transformed, origin);
     transformed = processed.value;
   }
@@ -189,10 +194,10 @@ var Mutate = function (origin) {
 
     fillDefaults(config);
 
-    var params;
+    var transformed;
 
     if (isArray(obj)) {
-      var transformed = [];
+      transformed = [];
 
       for (i = 0, size = obj.length; i < size; i++) {
         Steps.addIndex(i);
@@ -203,19 +208,19 @@ var Mutate = function (origin) {
 
         Steps.back();
       }
-
-      params = transformed;
     } else {
-      params = resolve(obj, config);
+      transformed = resolve(obj, config);
     }
 
-    obj = params;
+    obj = transformed;
   }
 
   return obj;
 };
 
 Manager.apply(Mutate);
+
+
 
 Mutate.mutators = Mutators;
 Mutate.types = {

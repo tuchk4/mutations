@@ -5,7 +5,7 @@ var browserify = require('gulp-browserify');
 // Basic usage
 gulp.task('commonjs', function() {
   // Single entry point to browserify
-  gulp.src('src/index.js')
+  gulp.src('src/mutate.js')
     .pipe(browserify({
       insertGlobals: false,
       debug: false,

@@ -1,5 +1,5 @@
 var expect = require('expect.js'),
-  Mutate = require('../../src/index'),
+  Mutate = require('../../src/mutate'),
   Origin = require('./origin');
 
 describe('#Flow', function () {

@@ -95,8 +95,9 @@ var Manager = {
 
 
   apply: function (Src) {
-    this.each(function (name, rule) {
-      var exports = rule.exports;
+    this.eachSource(function (name, Source) {
+      var exports = Source.exports;
+
 
       if (isObject(exports)) {
         for (var method in exports) {

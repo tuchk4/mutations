@@ -1,6 +1,7 @@
 'use strict';
 
 var isArray = require('./utils/types').isArray,
+  isObject = require('./utils/types').isObject,
   Mutators = require('./utils/mutators');
 
 function getFlow() {
@@ -172,7 +173,7 @@ function getFlow() {
         rule.broadcast = {};
       }
 
-      rule[arguments[0]] = arguments[1];
+      rule.broadcast[arguments[0]] = arguments[1];
     } else if (isObject(arguments[0])) {
       rule.broadcast = arguments[0];
     } else {

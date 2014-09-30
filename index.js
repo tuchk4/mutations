@@ -41,6 +41,7 @@ var rules = {
 //var result = Mutate(Origin, rules);
 
 var flow = Mutate.flow()
+  .broadcast('rename', ':uppercase')
   .remove(['tags[0]', 'name.first'])
   .add('numbers', '123')
 
@@ -48,7 +49,12 @@ var flow = Mutate.flow()
     .def(0)
 
   .field('friends')
-    .map('name')
+  //  .map('name')
+    .add(function(item){
+      return {
+        test: item.name + '!'
+      }
+    })
 
   .field('isActive')
     .rename('asd')
@@ -57,14 +63,14 @@ var flow = Mutate.flow()
     .remove()
 
   .field('id')
-    .rename('hash')
+    .rename('hash');
 
-  .then()
-    .field('friends')
-      .convert({
-        from: 'any',
-        to: 'json'
-      });
+//  .then()
+//    .field('FRIENDS')
+//      .convert({
+//        from: 'any',
+//        to: 'json'
+//      });
 
 
 console.log(Chalk.magenta(JSON.stringify(flow.getQueue(), null, 4)));
