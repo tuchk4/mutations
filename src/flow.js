@@ -1,4 +1,7 @@
-"use strict";
+'use strict';
+
+var isArray = require('./utils/types').isArray,
+  Mutators = require('./utils/mutators');
 
 function getFlow() {
 
@@ -29,14 +32,6 @@ function getFlow() {
     return isRemoveEmpty && !isExists;
   }
 
-  function setType(type) {
-    if (AVAILABLE_TYPES.indexOf(type) == -1) {
-      throw new Error('Unssported tranform type');
-    }
-
-    rules.type = type;
-  }
-
   function getRule(d) {
     var obj = rules;
 
@@ -64,59 +59,6 @@ function getFlow() {
     return current[current.length - 1];
   }
 
-  function addField(field) {
-    if (!rules.fields.hasOwnProperty(field)) {
-      rules.fields[field] = {};
-    }
-  }
-
-  function convertField(expression, params) {
-    var rule = getRule();
-
-    if (!rule.hasOwnProperty('convert')) {
-      rule.convert = [];
-    }
-
-    rule.convert.push([expression, params]);
-  }
-
-  function renameField(name) {
-    getRule().rename = name;
-  }
-
-  function mapArray(key) {
-    getRule().map = key;
-  }
-
-  function removeField() {
-    var field = getField(),
-      rules = getRule(1);
-
-    if (!rules.hasOwnProperty('remove')) {
-      rules.remove = [];
-    }
-
-    rules.remove.push(field);
-    if (rules.fields.hasOwnProperty(field)) {
-      delete rules[field];
-    }
-  }
-
-  function setDef(def) {
-    getRule().def = def;
-  }
-
-  function setEncode(encode) {
-    getRule().encode = encode;
-  }
-
-  function add(func) {
-    if (!rules.hasOwnProperty('add')) {
-      rules.add = [];
-    }
-
-    rules.add.push(func);
-  }
 
   function isCurrentSelected() {
     if (!current) {
@@ -124,12 +66,10 @@ function getFlow() {
     }
   }
 
-  function selectField(field) {
-    current = [field];
-  }
-
-  function selectChild(field) {
-    current.push(field);
+  function addField(field) {
+    if (!rules.fields.hasOwnProperty(field)) {
+      rules.fields[field] = {};
+    }
   }
 
   function pushQueue() {
@@ -138,9 +78,9 @@ function getFlow() {
 
   initRules();
 
-  var Flow = function(source) {
+  var Flow = function (source) {
     if (!onExec) {
-      throw new Error('Shoule be defined on exec funciton');
+      throw new Error('Should be defined on exec function');
     }
 
     var queue = Flow.getQueue();
@@ -148,11 +88,11 @@ function getFlow() {
     return onExec.apply(null, [source].concat(queue));
   };
 
-  Flow.onExec = function(on) {
+  Flow.onExec = function (on) {
     onExec = on;
   };
 
-  Flow.getQueue = function() {
+  Flow.getQueue = function () {
     if (!isEmpty()) {
       Flow.then();
     }
@@ -160,60 +100,114 @@ function getFlow() {
     return queue;
   };
 
-  Flow.field = function(field) {
-    addField(field);
-    selectField(field);
+  /**
+   * Default Flow methods
+   */
+  Flow.type = function (type) {
+    if (AVAILABLE_TYPES.indexOf(type) == -1) {
+      throw new Error('Unsupported transform type');
+    }
+
+    rules.type = type;
+
     return this;
   };
 
-  Flow.child = function(field) {
-    selectChild(field);
-    return this;
-  };
 
-  Flow.remove = function() {
-    isCurrentSelected();
-    removeField();
-    return this;
-  };
-
-  Flow.rename = function(name) {
-    renameField(name);
-    return this;
-  };
-
-  Flow.map = function(key) {
-    mapArray(key);
-    return this;
-  };
-
-  Flow.then = function() {
+  Flow.then = function () {
     pushQueue();
     initRules();
     return this;
   };
 
-  Flow.convert = function(expression, params) {
-    convertField(expression, params);
+  Flow.field = function (field) {
+    addField(field);
+    current = [field];
+
     return this;
   };
 
-  Flow.def = function(value) {
-    setDef(value);
+  Flow.child = function (field) {
+    current.push(field);
+
     return this;
   };
 
-  Flow.type = function(type) {
-    setType(type);
+  Flow.remove = function (field) {
+    isCurrentSelected();
+
+    field = field || getField();
+
+    var rule;
+
+    if (!!arguments.length) {
+      rule = rules;
+    } else {
+      rule = getRule(1);
+    }
+
+
+    if (!rule.hasOwnProperty('remove')) {
+      rule.remove = [];
+    }
+
+    if (isArray(field)) {
+      rule.remove = rules.remove.concat(field);
+    } else {
+      rule.remove.push(field);
+    }
+
+    Mutators.remove(rule, 'fields.' + field);
+
     return this;
   };
 
-  Flow.add = function(func) {
-    add(func);
+  Flow.broadcast = function () {
+    isCurrentSelected();
+
+    var rule = getRule();
+
+    if (arguments.length == 2) {
+      if (!isObject(rule.broadcast)) {
+        rule.broadcast = {};
+      }
+
+      rule[arguments[0]] = arguments[1];
+    } else if (isObject(arguments[0])) {
+      rule.broadcast = arguments[0];
+    } else {
+      throw new Error('Wrong broadcast parameters')
+    }
+
     return this;
   };
 
-  return Flow;
+  return {
+    getRule: getRule,
+    getField: getField,
+    instance: Flow,
+    isCurrentSelected: isCurrentSelected
+  }
 }
 
-module.exports = getFlow;
+
+module.exports = {
+  getInstance: function (Manager) {
+    var Flow = getFlow(),
+      Instance = Flow.instance;
+
+    Manager.eachSource(function (name, Source) {
+      if (Source.hasOwnProperty('flow')) {
+        Instance[name] = function () {
+          Flow.isCurrentSelected();
+          var expr = Source.flow(Flow.getRule(), Flow.getField());
+          expr.apply(Source, arguments);
+
+          return Instance;
+        }
+      }
+    });
+
+    return Instance;
+  }
+};

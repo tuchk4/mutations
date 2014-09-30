@@ -19,7 +19,7 @@ module.exports = {
     "tempor",
     "enim"
   ],
-  "eyeColor": "brown",
+
   "friends": [
     {
       "id": 1,
@@ -33,5 +33,7 @@ module.exports = {
       "id": 3,
       "name": "Valeria Bernard"
     }
-  ]
+  ],
+
+  "eyeColor": "brown"
 };
