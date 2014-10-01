@@ -2,7 +2,7 @@
   "author": "tuchk4",
   "name": "mutations",
   "description": "Transforms js objects using specified rules",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "repository": {
     "url": "https://github.com/tuchk4/transforms.git"
   },
