@@ -185,11 +185,10 @@ function fillDefaults(config) {
 var Mutate = function (origin) {
 
   var obj = origin,
-    configs = Array.prototype.slice.call(arguments, 1),
-    i, size;
+    configs = Array.prototype.slice.call(arguments, 1);
 
 
-  for (i = 0, size = configs.length; i < size; i++) {
+  for (var i = 0, size = configs.length; i < size; i++) {
     var config = configs[i];
 
     fillDefaults(config);
@@ -199,11 +198,11 @@ var Mutate = function (origin) {
     if (isArray(obj)) {
       transformed = [];
 
-      for (i = 0, size = obj.length; i < size; i++) {
+      for (var j = 0, arrLength = obj.length; j < arrLength; j++) {
         Steps.addIndex(i);
 
         if (Nests.merge('remove').indexOf(Steps.get()) == -1) {
-          transformed.push(resolve(obj[i], config));
+          transformed.push(resolve(obj[j], config));
         }
 
         Steps.back();

@@ -25,7 +25,7 @@ function getType(expr) {
 }
 
 
-function err(checkKey, value){
+function err(checkKey, value) {
   throw new TypeError('Type check failed: ' + checkKey + '(' + JSON.stringify(value) + ')');
 }
 
@@ -37,59 +37,59 @@ function checkType(checkKey, value) {
   }
 }
 
-var conversions =  {
-  Any_To_Json: function(value) {
+var conversions = {
+  Any_To_Json: function (value, origin, param) {
     return JSON.stringify(value);
   },
 
-  Array_To_Json: function(value) {
+  Array_To_Json: function (value) {
     checkType('isArray', value);
     return this.Any_To_Json(value);
   },
 
-  Object_To_Json: function(value) {
-    if (!Types.isObject(value) || Types.isArray(value)){
+  Object_To_Json: function (value) {
+    if (!Types.isObject(value) || Types.isArray(value)) {
       err('isObject and !isArray', value);
     }
     return this.Any_To_Json(value);
   },
 
-  Number_To_String: function(value) {
+  Number_To_String: function (value) {
     checkType('isNumber', value);
     return value.toString();
   },
 
-  Number_To_Boolean: function(value) {
+  Number_To_Boolean: function (value) {
     checkType('isNumber', value);
     return !!value;
   },
 
-  Number_To_Date: function(value) {
+  Number_To_Date: function (value) {
     checkType('isNumber', value);
     return new Date(value);
   },
 
-  String_To_Integer: function(value) {
+  String_To_Integer: function (value) {
     checkType('isString', value);
     return parseInt(value, 10);
   },
 
-  String_To_Number: function(value) {
+  String_To_Number: function (value) {
     checkType('isString', value);
     return parseFloat(value, 10);
   },
 
-  String_To_Date: function(value) {
+  String_To_Date: function (value) {
     checkType('isString', value);
     return new Date(Date.parse(value));
   },
 
-  Date_To_String: function(value) {
+  Date_To_String: function (value) {
     checkType('isDate', value);
     return '' + value;
   },
 
-  Boolean_To_Integer: function(value) {
+  Boolean_To_Integer: function (value) {
     checkType('isBoolean', value);
     return +value;
   }
@@ -126,16 +126,25 @@ module.exports = {
 
         if (Types.isArray(converter)) {
           expr = converter[0];
+
+          if (Types.isObject(expr) && expr.hasOwnProperty('params')){
+            throw new Error('Wrong convert rule. Params defined in object and as second arr value');
+          }
+
           params = converter[1];
         }
 
         var type;
         if (Types.isObject(expr)) {
-
           type = getType(expr);
+
+          if (expr.hasOwnProperty('params')){
+            params = expr.params;
+          }
         } else {
           type = expr;
         }
+
 
         if (conversions.hasOwnProperty(type)) {
           converted = conversions[type].call(null, converted, origin, params);
@@ -147,7 +156,6 @@ module.exports = {
         throw new Error('Wrong convert rule');
       }
     }
-
 
 
     return {
@@ -164,7 +172,7 @@ module.exports = {
         Rule.convert = [];
       }
 
-      if (Types.isFunction(expr)){
+      if (Types.isFunction(expr)) {
         Rule.convert.push(expr);
       } else {
         Rule.convert.push([expr, params]);
