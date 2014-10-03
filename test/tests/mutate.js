@@ -3,8 +3,8 @@ var Origin = require('./origin'),
   expect = require('expect.js');
 
 
-describe('#Mutate', function () {
-  it('Mutate results should be same using regular and simple config (only for rename) and return only selected fields', function () {
+describe('#Mutate', function() {
+  it('Mutate results should be same using regular and simple config (only for rename) and return only selected fields', function() {
     var regular = {
       type: 'select',
       fields: {
@@ -37,7 +37,7 @@ describe('#Mutate', function () {
   });
 
 
-  it('If type is select - results should contain only described fields', function () {
+  it('If type is select - results should contain only described fields', function() {
     var rules = {
       type: 'select',
       fields: {
@@ -58,14 +58,14 @@ describe('#Mutate', function () {
     expect(result).to.only.have.keys(['hash', 'active', 'first_name']);
   });
 
-  it('New fields should be added', function () {
+  it('New fields should be added', function() {
     var rules = {
       type: 'select',
 
       /**
        * use add for root elements
        */
-      add: function (item, origin) {
+      add: function(item, origin) {
         return {
           full_name: origin.name.first + ' ' + origin.name.last
         }
@@ -75,15 +75,18 @@ describe('#Mutate', function () {
           /**
            * use add for child elements
            */
-          add: [function () {
-            return {
-              status: true
+          add: [
+
+            function() {
+              return {
+                status: true
+              }
+            },
+            function() {
+              return {
+                isActive: false
+              }
             }
-          }, function () {
-            return {
-              isActive: false
-            }
-          }
           ]
         }
       }
@@ -93,41 +96,37 @@ describe('#Mutate', function () {
 
     expect(result).to.be.eql({
       full_name: 'Valarie Alvarado',
-      friends: [
-        {
-          id: 1,
-          name: "Marsh Goff",
-          isActive: false,
-          status: true
-        },
-        {
-          id: 2,
-          name: "Aisha Kelley",
-          isActive: false,
-          status: true
-        },
-        {
-          id: 3,
-          name: "Valeria Bernard",
-          isActive: false,
-          status: true
-        }
-      ]
+      friends: [{
+        id: 1,
+        name: "Marsh Goff",
+        isActive: false,
+        status: true
+      }, {
+        id: 2,
+        name: "Aisha Kelley",
+        isActive: false,
+        status: true
+      }, {
+        id: 3,
+        name: "Valeria Bernard",
+        isActive: false,
+        status: true
+      }]
     });
   });
 
 
-  it('def - should be added if there is no value', function () {
+  it('def - should be added if there is no value', function() {
     var rules = {
       type: 'select',
       fields: {
         status: {
-          def: function () {
+          def: function() {
             return true;
           }
         },
         online: {
-          def: function () {
+          def: function() {
             return false;
           }
         }
@@ -142,7 +141,7 @@ describe('#Mutate', function () {
     });
   });
 
-  it('Deep renaming and array access', function () {
+  it('Deep renaming and array access', function() {
     var rules = {
       type: 'select',
       fields: {
@@ -168,17 +167,17 @@ describe('#Mutate', function () {
     });
   });
 
-  it('Custom converts', function () {
+  it('Custom converts', function() {
     var rules = {
       type: 'select',
       fields: {
         age: {
-          convert: function (age) {
+          convert: function(age) {
             return age - 10;
           }
         },
         status: {
-          convert: function (status, origin) {
+          convert: function(status, origin) {
             if (!status && origin.isActive) {
               return 'online';
             } else {
@@ -188,10 +187,11 @@ describe('#Mutate', function () {
         },
         id: {
           convert: [
-            function (id) {
+
+            function(id) {
               return id + '#'
             },
-            function (id, origin, transformed) {
+            function(id, origin, transformed) {
               return id + transformed.age;
             }
           ]
@@ -208,9 +208,9 @@ describe('#Mutate', function () {
     });
   });
 
-  it('Custom convert types', function () {
+  it('Custom convert types', function() {
 
-    Mutate.addConversion('String_To_Reverse', function (value) {
+    Mutate.addConversion('String_To_Reverse', function(value) {
       return value.split("").reverse().join("");
     });
 
@@ -244,7 +244,7 @@ describe('#Mutate', function () {
     });
   });
 
-  it('Removing items', function () {
+  it('Removing items', function() {
     var rules = {
       remove: ['picture', 'isActive', 'status', 'balance', 'eyeColor', 'friends[1]', 'friends[2]', 'tags'],
       fields: {
@@ -261,4 +261,19 @@ describe('#Mutate', function () {
     expect(result.friends).to.have.length(2);
     expect(result.name).to.only.have.keys(['first']);
   });
+
+
+  it('Copying items', function() {
+    var f = Mutate
+      .flow()
+      .type('select')
+      .field('age')
+      .rename(['age1', 'age2']);
+
+    var result = f(Origin);
+    expect(result).to.only.have.keys(['age1', 'age2']);
+    expect(result.age1).to.be.equal(37);
+    expect(result.age2).to.be.equal(37);
+  });
+
 });
