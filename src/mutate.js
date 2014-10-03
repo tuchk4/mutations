@@ -135,11 +135,6 @@ function resolve(origin, config) {
     Steps.back();
   }
 
-  if (Steps.isRoot()) {
-    processed = acceptRules(undefined, transformed, config, transformed, origin);
-    transformed = processed.value;
-  }
-
   if (nests.broadcast) {
     Nests.climb('broadcast');
   }
@@ -194,16 +189,24 @@ var Mutate = function (origin) {
       transformed = [];
 
       for (var j = 0, arrLength = obj.length; j < arrLength; j++) {
-        Steps.addIndex(i);
+        var isRoot = Steps.isRoot();
+
+        Steps.addIndex(j);
 
         if (Nests.merge('remove').indexOf(Steps.get()) == -1) {
-          transformed.push(resolve(obj[j], config));
+          transformed.push(resolve(obj[j], config, isRoot));
         }
 
         Steps.back();
       }
     } else {
       transformed = resolve(obj, config);
+    }
+
+
+    if (Steps.isRoot() || isRoot) {
+      var processed = acceptRules(undefined, transformed, config, transformed, origin);
+      transformed = processed.value;
     }
 
     obj = transformed;

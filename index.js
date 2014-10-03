@@ -91,7 +91,7 @@ var rules = {
 };
 
 
-Mutate(Origin, rules);
+//Mutate(Origin, rules);
 
 
 /**
@@ -136,9 +136,7 @@ var flow = Mutate.flow()
  *
  */
 var config = {
-  fields: {
-    id: 'hash'
-  }
+  map:'id'
 };
 
 
@@ -147,13 +145,7 @@ var r = Mutate([
   {id: 2},
   {id: 3}
 ], {
-  fields: {
-    id: 'hash'
-  }
-}, {
-  fields: {
-    hash: ':uppercase'
-  }
+  map:'id'
 });
 
 console.log(JSON.stringify(r, null, 4));
