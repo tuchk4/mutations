@@ -12,11 +12,6 @@ var isArray = require('./utils/types').isArray,
   Manager = require('./manager');
 
 
-Manager.register('add', require('./rules/add'), 0);
-Manager.register('def', require('./rules/def'), 10);
-Manager.register('map', require('./rules/map'), 20);
-Manager.register('rename', require('./rules/rename'), 30);
-Manager.register('convert', require('./rules/convert'), 40);
 
 
 function unique(value, index, self) {
@@ -217,9 +212,14 @@ var Mutate = function (origin) {
   return obj;
 };
 
-Manager.apply(Mutate);
+Manager.link(Mutate);
+Mutate.register = Manager.register;
 
-
+Manager.register('add', require('./rules/add'), 0);
+Manager.register('def', require('./rules/def'), 10);
+Manager.register('map', require('./rules/map'), 20);
+Manager.register('rename', require('./rules/rename'), 30);
+Manager.register('convert', require('./rules/convert'), 40);
 
 Mutate.mutators = Mutators;
 Mutate.types = {

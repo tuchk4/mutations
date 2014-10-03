@@ -14,7 +14,7 @@ function unique(value, index, self) {
 var Manager = {
   rules: [],
 
-  register: function (key, rule, priority) {
+  register: function (key, source, priority) {
     priority = parseInt(priority, 10) || 0;
 
     if (this.rules.hasOwnProperty(key)) {
@@ -23,13 +23,19 @@ var Manager = {
 
     this.rules[key] = {
       rule: key,
-      source: rule,
+      source: source,
       priority: priority
     };
+
+    this.apply(key, source);
   },
 
   has: function (key) {
     return this.rules.hasOwnProperty(key);
+  },
+
+  link: function (Mutate) {
+    this.Mutate = Mutate;
   },
 
   eachSource: function (expr) {
@@ -93,26 +99,23 @@ var Manager = {
     }
   },
 
+  apply: function (name, Source) {
+    var exports = Source.exports,
+      Mutate = this.Mutate;
 
-  apply: function (Src) {
-    this.eachSource(function (name, Source) {
-      var exports = Source.exports;
-
-
-      if (isObject(exports)) {
-        for (var method in exports) {
-          if (exports.hasOwnProperty(method)) {
-            if (Src.hasOwnProperty(method)) {
-              console.info('Export method already exists');
-            }
-
-            Src[method] = exports[method];
+    if (isObject(exports)) {
+      for (var method in exports) {
+        if (exports.hasOwnProperty(method)) {
+          if (Mutate.hasOwnProperty(method)) {
+            console.info('Export method already exists');
           }
+
+          Mutate[method] = exports[method];
         }
-      } else if (isFunction(exports)) {
-        Src[name] = exports;
       }
-    });
+    } else if (isFunction(exports)) {
+      Mutate[name] = exports;
+    }
   }
 };
 
