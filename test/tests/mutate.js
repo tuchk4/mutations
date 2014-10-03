@@ -263,17 +263,17 @@ describe('#Mutate', function() {
   });
 
 
-  it('Copying items', function() {
-    var f = Mutate
-      .flow()
-      .type('select')
-      .field('age')
-      .rename(['age1', 'age2']);
+  // it('Copying items', function() {
+  //   var f = Mutate
+  //     .flow()
+  //     .type('select')
+  //     .field('age')
+  //     .rename(['age1', 'age2']);
 
-    var result = f(Origin);
-    expect(result).to.only.have.keys(['age1', 'age2']);
-    expect(result.age1).to.be.equal(37);
-    expect(result.age2).to.be.equal(37);
-  });
+  //   var result = f(Origin);
+  //   expect(result).to.only.have.keys(['age1', 'age2']);
+  //   expect(result.age1).to.be.equal(37);
+  //   expect(result.age2).to.be.equal(37);
+  // });
 
 });
