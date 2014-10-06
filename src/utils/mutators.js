@@ -1,5 +1,6 @@
 'use strict';
 var isArray = require('./types').isArray,
+  isObject = require('./types').isObject,
   exist = require('./types').exist,
   re = /(\w+)|(\[\d+\])/g;
 
@@ -15,6 +16,13 @@ var Mutators = {
     return key;
   },
 
+  /**
+   * Care about this xD
+   */
+  isPlain: function(value){
+    return value.constructor === Object;
+   },
+
   get: function get(obj, path) {
     var parts = path.match(re),
       current = obj;
@@ -29,7 +37,15 @@ var Mutators = {
       }
     }
 
-    return this.clone(current);
+    var result;
+
+    if (isObject(current) && !isArray(current) && !this.isPlain(current)){
+      result = current;
+    } else {
+      result = this.clone(current);
+    }
+
+    return result;
   },
 
   insert: function insert(obj, key, value) {

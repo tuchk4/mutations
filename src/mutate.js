@@ -129,6 +129,11 @@ function resolve(origin, config) {
       }
 
       Mutators.insert(transformed, key, value);
+
+      if (keys[i] != key){
+        Mutators.remove(transformed, keys[i]);
+        Mutators.clean(transformed, keys[i]);
+      }
     }
 
 

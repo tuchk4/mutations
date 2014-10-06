@@ -139,13 +139,20 @@ var config = {
   map:'id'
 };
 
+var o = [
+  {id: 1, a: {b: {c: { d: 1 } } } },
+  {id: 2,  a: {b: {c: { d: 2 } } } },
+  {id: 3,  a: {b: {c: { d: 3 } } } }
+];
 
-var r = Mutate([
-  {id: 1},
-  {id: 2},
-  {id: 3}
-], {
-  map:'id'
+var r = Mutate(o, {
+  map:'id',
+  fields: {
+    'a.b.c.d': {
+      rename: 'D'
+    }
+  }
 });
 
+console.log(JSON.stringify(o, null, 4));
 console.log(JSON.stringify(r, null, 4));
