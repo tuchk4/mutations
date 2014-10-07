@@ -145,9 +145,8 @@ module.exports = {
           type = expr;
         }
 
-
         if (conversions.hasOwnProperty(type)) {
-          converted = conversions[type].call(null, converted, origin, params);
+          converted = conversions[type].call(conversions, converted, origin, params);
         } else {
           throw new Error(type + ' convert rule is not defined');
         }
