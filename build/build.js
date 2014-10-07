@@ -13,8 +13,6 @@ var isArray = _dereq_('./utils/types').isArray,
   Manager = _dereq_('./manager');
 
 
-
-
 function unique(value, index, self) {
   return self.indexOf(value) === index;
 }
@@ -130,6 +128,11 @@ function resolve(origin, config) {
       }
 
       Mutators.insert(transformed, key, value);
+
+      if (keys[i] != key){
+        Mutators.remove(transformed, keys[i]);
+        Mutators.clean(transformed, keys[i]);
+      }
     }
 
 
@@ -201,6 +204,7 @@ var Mutate = function (origin) {
         Steps.back();
       }
     } else {
+
       transformed = resolve(obj, config);
     }
 
@@ -1004,6 +1008,7 @@ module.exports = {
 },{"../utils/types":12}],9:[function(_dereq_,module,exports){
 'use strict';
 var isArray = _dereq_('./types').isArray,
+  isObject = _dereq_('./types').isObject,
   exist = _dereq_('./types').exist,
   re = /(\w+)|(\[\d+\])/g;
 
@@ -1019,6 +1024,13 @@ var Mutators = {
     return key;
   },
 
+  /**
+   * Care about this xD
+   */
+  isPlain: function(value){
+    return value.constructor === Object;
+   },
+
   get: function get(obj, path) {
     var parts = path.match(re),
       current = obj;
@@ -1033,7 +1045,15 @@ var Mutators = {
       }
     }
 
-    return this.clone(current);
+    var result;
+
+    if (isObject(current) && !isArray(current) && !this.isPlain(current)){
+      result = current;
+    } else {
+      result = this.clone(current);
+    }
+
+    return result;
   },
 
   insert: function insert(obj, key, value) {
