@@ -1,6 +1,6 @@
-var expect = require('expect.js'),
-  Mutate = require('../../src/mutate')
+var expect = require('expect.js');
 
+module.exports = function(Mutate) {
 
 describe('#Convertions', function () {
 
@@ -81,3 +81,5 @@ describe('#Convertions', function () {
     expect(cData.booleanToIntegerField).to.equal(1);
   });
 });
+}
+
