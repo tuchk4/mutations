@@ -106,53 +106,107 @@ var flow = Mutate.flow()
   .add('numbers', '123')
 
   .field('access')
-    .def(0)
+  .def(0)
 
   .field('friends')
-    .add(function (item) {
-      return {
-        test: item.name + '!'
-      }
-    })
+  .add(function (item) {
+    return {
+      test: item.name + '!'
+    }
+  })
 
   .field('isActive')
-    .rename('asd')
+  .rename('asd')
 
   .field('isActive')
-    .remove()
+  .remove()
 
   .field('id')
-    .rename('hash')
+  .rename('hash')
 
   .then()
-    .field('FRIENDS')
-      .convert({
-        from: 'any',
-        to: 'json'
-      });
+  .field('FRIENDS')
+  .convert({
+    from: 'any',
+    to: 'json'
+  });
 
 
 /**
  *
  */
 var config = {
-  map:'id'
+  map: 'id'
 };
 
 var o = [
   {id: 1, a: {b: {c: { d: 1 } } } },
-  {id: 2,  a: {b: {c: { d: 2 } } } },
-  {id: 3,  a: {b: {c: { d: 3 } } } }
+  {id: 2, a: {b: {c: { d: 2 } } } },
+  {id: 3, a: {b: {c: { d: 3 } } } }
 ];
 
-var r = Mutate(o, {
-  map:'id',
-  fields: {
-    'a.b.c.d': {
-      rename: 'D'
-    }
-  }
-});
+//var r = Mutate(o, {
+//  map:'id',
+//  fields: {
+//    'a.b.c.d': {
+//      rename: 'D'
+//    }
+//  }
+//});
 
-console.log(JSON.stringify(o, null, 4));
-console.log(JSON.stringify(r, null, 4));
+//console.log(JSON.stringify(o, null, 4));
+//console.log(JSON.stringify(r, null, 4));
+
+//var r = {
+//  type: 'select',
+//  fields: {
+//    arr: {
+//      convert: function(v){
+//        return v.join(',');
+//      }
+//    }
+//  }
+//};
+//
+//var o = {
+//  arr: ['1', '2', '3']
+//};
+//
+//console.log(JSON.stringify(Mutate(o, r), null, 4));
+
+//
+//var a = [{id:1, name:2},{id:11, name:22},{id:111, name:222},{id:1111, name:2222},{id:11111, name:222222}];
+//
+//console.log(JSON.stringify(Mutate(a, {
+//  map: 'id'
+//}), null, 4));
+
+
+var a = [
+  {id: "a", name: "a name", friends: [
+    {id: 1, name: 'f1'},
+    {id:2, name:'f2'},
+    {id:3, name:'f3'}
+  ]},
+  {id: "b", name: "b name", friends: [
+    {id: 11, name: 'f11'},
+    {id:22, name:'f32'},
+    {id:33, name:'f33'}
+  ]}
+];
+
+var Formula = Mutate.flow()
+  .field('friends')
+    .each(function(item){
+      return item.name;
+    })
+    .copy('a')
+    .copy('b.deep.insert')
+  .then()
+    .field('a')
+      .concat('Any_To_Json')
+      .concat('Any_To_Json2');
+
+
+console.log(JSON.stringify(Formula(a), null, 4));
+

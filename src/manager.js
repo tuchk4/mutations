@@ -27,11 +27,19 @@ var Manager = {
       priority: priority
     };
 
-    this.apply(key, source);
+    this.exports(key, source);
   },
 
   has: function (key) {
     return this.rules.hasOwnProperty(key);
+  },
+
+  get: function(key){
+    if (!this.has(key)){
+      throw new Error('Rule does not exists');
+    }
+
+    return this.rules[key];
   },
 
   link: function (Mutate) {
@@ -99,7 +107,7 @@ var Manager = {
     }
   },
 
-  apply: function (name, Source) {
+  exports: function (name, Source) {
     var exports = Source.exports,
       Mutate = this.Mutate;
 

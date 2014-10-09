@@ -3,6 +3,7 @@
 var isArray = require('../utils/types').isArray,
   isObject = require('../utils/types').isObject,
   isFunction = require('../utils/types').isFunction,
+  isString = require('../utils/types').isString,
   Mutators = require('../utils/mutators');
 
 
@@ -21,10 +22,10 @@ module.exports = {
       add = [add];
     }
 
+
     for (var i = 0, size = add.length; i < size; i++) {
       var expr = add[i],
         added = expr;
-
 
       if (isArray(value)) {
         for (var j = 0, len = value.length; j < len; j++) {
@@ -32,6 +33,14 @@ module.exports = {
 
           if (isFunction(expr)) {
             added = expr(item, origin, transformed);
+          }
+
+          if (isString(added)){
+            added = [added];
+          }
+
+          if (isArray(added) || !isObject(added)){
+            throw new Error('Wrong add value');
           }
 
           insert(added, item);

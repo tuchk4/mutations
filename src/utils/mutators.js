@@ -37,12 +37,16 @@ var Mutators = {
       }
     }
 
+    return this.copy(current);;
+  },
+
+  copy: function(value){
     var result;
 
-    if (isObject(current) && !isArray(current) && !this.isPlain(current)){
-      result = current;
+    if (isObject(value) && !isArray(value) && !this.isPlain(value)){
+      result = value;
     } else {
-      result = this.clone(current);
+      result = this.clone(value);
     }
 
     return result;
@@ -181,6 +185,14 @@ var Mutators = {
     }
 
     throw new Error("Unable to copy obj");
+  },
+
+  standalone: function(method){
+    if (!this.hasOwnProperty(method)){
+      throw new Error('Method does not exists');
+    }
+
+    return this[method].bind(this);
   }
 };
 

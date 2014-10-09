@@ -21,10 +21,19 @@ function getFlow() {
   function isEmpty() {
 
     var isExists = false;
-    for (var field in rules.fields) {
-      if (rules.fields.hasOwnProperty(field)) {
+    for (var rule in rules) {
+      if (rules.hasOwnProperty(rule)) {
         isExists = true;
         break;
+      }
+    }
+
+    if (!isExists) {
+      for (var field in rules.fields) {
+        if (rules.fields.hasOwnProperty(field)) {
+          isExists = true;
+          break;
+        }
       }
     }
 

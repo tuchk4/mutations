@@ -4,4 +4,4 @@ var Mutate = process.env.JS_COV
 
 require('./describing/conversions.js')(Mutate);
 require('./describing/flow.js')(Mutate);
-require('./describingm/mutate.js')(Mutate);
+require('./describing/mutate.js')(Mutate);

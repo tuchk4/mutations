@@ -221,13 +221,19 @@ var Mutate = function (origin) {
 };
 
 Manager.link(Mutate);
+
 Mutate.register = Manager.register;
+Mutate.getRule = Manager.get;
 
 Manager.register('add', _dereq_('./rules/add'), 0);
+Manager.register('concat', _dereq_('./rules/concat'), 5);
 Manager.register('def', _dereq_('./rules/def'), 10);
 Manager.register('map', _dereq_('./rules/map'), 20);
 Manager.register('rename', _dereq_('./rules/rename'), 30);
-Manager.register('convert', _dereq_('./rules/convert'), 40);
+Manager.register('each', _dereq_('./rules/each'), 40);
+Manager.register('convert', _dereq_('./rules/convert'), 60);
+Manager.register('copy', _dereq_('./rules/copy'), 70);
+
 
 Mutate.mutators = Mutators;
 Mutate.types = {
@@ -248,7 +254,7 @@ Mutate.flow = function () {
 };
 
 module.exports = Mutate;
-},{"./flow":2,"./manager":3,"./rules/add":4,"./rules/convert":5,"./rules/def":6,"./rules/map":7,"./rules/rename":8,"./utils/mutators":9,"./utils/nests":10,"./utils/steps":11,"./utils/types":12}],2:[function(_dereq_,module,exports){
+},{"./flow":2,"./manager":3,"./rules/add":4,"./rules/concat":5,"./rules/convert":6,"./rules/copy":7,"./rules/def":8,"./rules/each":9,"./rules/map":10,"./rules/rename":11,"./utils/mutators":12,"./utils/nests":13,"./utils/steps":14,"./utils/types":15}],2:[function(_dereq_,module,exports){
 'use strict';
 
 var isArray = _dereq_('./utils/types').isArray,
@@ -272,10 +278,19 @@ function getFlow() {
   function isEmpty() {
 
     var isExists = false;
-    for (var field in rules.fields) {
-      if (rules.fields.hasOwnProperty(field)) {
+    for (var rule in rules) {
+      if (rules.hasOwnProperty(rule)) {
         isExists = true;
         break;
+      }
+    }
+
+    if (!isExists) {
+      for (var field in rules.fields) {
+        if (rules.fields.hasOwnProperty(field)) {
+          isExists = true;
+          break;
+        }
       }
     }
 
@@ -464,7 +479,7 @@ module.exports = {
   }
 };
 
-},{"./utils/mutators":9,"./utils/types":12}],3:[function(_dereq_,module,exports){
+},{"./utils/mutators":12,"./utils/types":15}],3:[function(_dereq_,module,exports){
 'use strict';
 
 var isObject = _dereq_('./utils/types').isObject,
@@ -494,11 +509,19 @@ var Manager = {
       priority: priority
     };
 
-    this.apply(key, source);
+    this.exports(key, source);
   },
 
   has: function (key) {
     return this.rules.hasOwnProperty(key);
+  },
+
+  get: function(key){
+    if (!this.has(key)){
+      throw new Error('Rule does not exists');
+    }
+
+    return this.rules[key];
   },
 
   link: function (Mutate) {
@@ -566,7 +589,7 @@ var Manager = {
     }
   },
 
-  apply: function (name, Source) {
+  exports: function (name, Source) {
     var exports = Source.exports,
       Mutate = this.Mutate;
 
@@ -587,12 +610,13 @@ var Manager = {
 };
 
 module.exports = Manager;
-},{"./utils/mutators":9,"./utils/nests":10,"./utils/types":12}],4:[function(_dereq_,module,exports){
+},{"./utils/mutators":12,"./utils/nests":13,"./utils/types":15}],4:[function(_dereq_,module,exports){
 'use strict';
 
 var isArray = _dereq_('../utils/types').isArray,
   isObject = _dereq_('../utils/types').isObject,
   isFunction = _dereq_('../utils/types').isFunction,
+  isString = _dereq_('../utils/types').isString,
   Mutators = _dereq_('../utils/mutators');
 
 
@@ -611,10 +635,10 @@ module.exports = {
       add = [add];
     }
 
+
     for (var i = 0, size = add.length; i < size; i++) {
       var expr = add[i],
         added = expr;
-
 
       if (isArray(value)) {
         for (var j = 0, len = value.length; j < len; j++) {
@@ -622,6 +646,14 @@ module.exports = {
 
           if (isFunction(expr)) {
             added = expr(item, origin, transformed);
+          }
+
+          if (isString(added)){
+            added = [added];
+          }
+
+          if (isArray(added) || !isObject(added)){
+            throw new Error('Wrong add value');
           }
 
           insert(added, item);
@@ -662,7 +694,63 @@ module.exports = {
 };
 
 
-},{"../utils/mutators":9,"../utils/types":12}],5:[function(_dereq_,module,exports){
+},{"../utils/mutators":12,"../utils/types":15}],5:[function(_dereq_,module,exports){
+'use strict';
+
+var isArray = _dereq_('../utils/types').isArray,
+  isObject = _dereq_('../utils/types').isObject,
+  isFunction = _dereq_('../utils/types').isFunction,
+  isString = _dereq_('../utils/types').isString,
+  Mutators = _dereq_('../utils/mutators');
+
+
+module.exports = {
+  run: function (key, value, concat, origin, transformed) {
+
+    if (!isArray(value)) {
+      throw new Error('Concat rule could be accepted only for arrays');
+    }
+
+    if (!isArray(concat)) {
+      concat = [concat];
+    }
+
+    for (var i = 0, size = concat.length; i < size; i++) {
+        var item = concat[i];
+
+      if (!isArray(item)){
+        item = [item];
+      }
+
+      value = value.concat(item);
+    }
+
+    return {
+      key: key,
+      value: value
+    }
+  },
+
+  flow: function (Rule) {
+
+    return function () {
+      if (!Rule.hasOwnProperty('concat')) {
+        Rule.concat = [];
+      }
+
+      var expr = arguments[0];
+      if (arguments.length == 2) {
+        expr = {};
+        expr[arguments[0]] = arguments[1];
+      }
+
+      Rule.concat.push(expr);
+    }
+  }
+};
+
+
+},{"../utils/mutators":12,"../utils/types":15}],6:[function(_dereq_,module,exports){
 'use strict';
 
 var Types = _dereq_('../utils/types');
@@ -810,9 +898,8 @@ module.exports = {
           type = expr;
         }
 
-
         if (conversions.hasOwnProperty(type)) {
-          converted = conversions[type].call(null, converted, origin, params);
+          converted = conversions[type].call(conversions, converted, origin, params);
         } else {
           throw new Error(type + ' convert rule is not defined');
         }
@@ -847,7 +934,48 @@ module.exports = {
 };
 
 
-},{"../utils/types":12}],6:[function(_dereq_,module,exports){
+},{"../utils/types":15}],7:[function(_dereq_,module,exports){
+'use strict';
+
+var Copy = _dereq_('../utils/mutators').standalone('copy'),
+  Insert = _dereq_('../utils/mutators').standalone('insert'),
+  isArray = _dereq_('../utils/types').isArray;
+
+module.exports = {
+  run: function (key, value, expr, origin, transformed) {
+
+    for (var i = 0, size = expr.length; i < size; i++) {
+
+      var name = expr[i],
+        copied = Copy(value);
+
+      Insert(transformed, name, copied);
+    }
+
+    return {
+      key: key,
+      value: value
+    }
+  },
+
+  flow: function (Rule) {
+
+    return function (expr) {
+      if (!isArray(Rule.copy)){
+        Rule.copy = [];
+      }
+
+      if (!isArray(expr)){
+        expr = [expr];
+      }
+
+      Rule.copy = Rule.copy.concat(expr);
+    }
+  }
+};
+
+
+},{"../utils/mutators":12,"../utils/types":15}],8:[function(_dereq_,module,exports){
 'use strict';
 
 var isFunction = _dereq_('../utils/types').isFunction;
@@ -878,7 +1006,42 @@ module.exports = {
 };
 
 
-},{"../utils/types":12}],7:[function(_dereq_,module,exports){
+},{"../utils/types":15}],9:[function(_dereq_,module,exports){
+'use strict';
+
+var isArray = _dereq_('../utils/types').isArray,
+  Convert= _dereq_('./convert');
+
+
+module.exports = {
+  run: function (key, value, expr, origin, transformed) {
+    if (!isArray(value)){
+      throw new Error('Rule "each" could be accepted only for arrays');
+    }
+
+    var results = [];
+
+    for (var i = 0, size = value.length; i < size; i++){
+      var converted =  Convert.run(i, value[i], expr, origin, transformed)
+      results.push(converted.value);
+    }
+
+    return {
+      key: key,
+      value: results
+    }
+  },
+
+  flow: function (Rule) {
+
+    return function (expr) {
+      Rule.each = expr;
+    }
+  }
+};
+
+
+},{"../utils/types":15,"./convert":6}],10:[function(_dereq_,module,exports){
 'use strict';
 
 var Map = _dereq_('../utils/mutators').map;
@@ -902,7 +1065,7 @@ module.exports = {
 };
 
 
-},{"../utils/mutators":9}],8:[function(_dereq_,module,exports){
+},{"../utils/mutators":12}],11:[function(_dereq_,module,exports){
 'use strict';
 
 var isObject = _dereq_('../utils/types').isObject,
@@ -1005,7 +1168,7 @@ module.exports = {
 };
 
 
-},{"../utils/types":12}],9:[function(_dereq_,module,exports){
+},{"../utils/types":15}],12:[function(_dereq_,module,exports){
 'use strict';
 var isArray = _dereq_('./types').isArray,
   isObject = _dereq_('./types').isObject,
@@ -1045,12 +1208,16 @@ var Mutators = {
       }
     }
 
+    return this.copy(current);;
+  },
+
+  copy: function(value){
     var result;
 
-    if (isObject(current) && !isArray(current) && !this.isPlain(current)){
-      result = current;
+    if (isObject(value) && !isArray(value) && !this.isPlain(value)){
+      result = value;
     } else {
-      result = this.clone(current);
+      result = this.clone(value);
     }
 
     return result;
@@ -1189,11 +1356,19 @@ var Mutators = {
     }
 
     throw new Error("Unable to copy obj");
+  },
+
+  standalone: function(method){
+    if (!this.hasOwnProperty(method)){
+      throw new Error('Method does not exists');
+    }
+
+    return this[method].bind(this);
   }
 };
 
 module.exports = Mutators;
-},{"./types":12}],10:[function(_dereq_,module,exports){
+},{"./types":15}],13:[function(_dereq_,module,exports){
 'use strict';
 
 var Nests ={
@@ -1245,7 +1420,7 @@ var Nests ={
 
 
 module.exports = Nests;
-},{}],11:[function(_dereq_,module,exports){
+},{}],14:[function(_dereq_,module,exports){
 'use strict';
 
 
@@ -1303,7 +1478,7 @@ var Steps  = {
 
 module.exports = Steps;
 
-},{}],12:[function(_dereq_,module,exports){
+},{}],15:[function(_dereq_,module,exports){
 "use strict";
 
 var objectTypes = {

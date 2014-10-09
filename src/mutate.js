@@ -12,8 +12,6 @@ var isArray = require('./utils/types').isArray,
   Manager = require('./manager');
 
 
-
-
 function unique(value, index, self) {
   return self.indexOf(value) === index;
 }
@@ -205,6 +203,7 @@ var Mutate = function (origin) {
         Steps.back();
       }
     } else {
+
       transformed = resolve(obj, config);
     }
 
@@ -221,13 +220,19 @@ var Mutate = function (origin) {
 };
 
 Manager.link(Mutate);
+
 Mutate.register = Manager.register;
+Mutate.getRule = Manager.get;
 
 Manager.register('add', require('./rules/add'), 0);
+Manager.register('concat', require('./rules/concat'), 5);
 Manager.register('def', require('./rules/def'), 10);
 Manager.register('map', require('./rules/map'), 20);
 Manager.register('rename', require('./rules/rename'), 30);
-Manager.register('convert', require('./rules/convert'), 40);
+Manager.register('each', require('./rules/each'), 40);
+Manager.register('convert', require('./rules/convert'), 60);
+Manager.register('copy', require('./rules/copy'), 70);
+
 
 Mutate.mutators = Mutators;
 Mutate.types = {
