@@ -1,4 +1,9 @@
+
 # Mutate javascript objects and arrays
+
+# Ideas
+
+Maybe implement rule execution as they were defined? Not by priority
 
 # TODO: add description
 
