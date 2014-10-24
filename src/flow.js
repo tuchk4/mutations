@@ -22,7 +22,10 @@ function getFlow() {
 
     var isExists = false;
     for (var rule in rules) {
-      if (rules.hasOwnProperty(rule)) {
+      if (rules.hasOwnProperty(rule)
+        && rule != 'fields'
+        && rule != 'remove') {
+
         isExists = true;
         break;
       }
@@ -125,8 +128,12 @@ function getFlow() {
 
 
   Flow.then = function () {
-    pushQueue();
+    if (!isEmpty()){
+      pushQueue();
+    }
+
     initRules();
+
     return this;
   };
 
