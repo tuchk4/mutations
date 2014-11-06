@@ -100,36 +100,36 @@ var rules = {
 
 
 
-var flow = Mutate.flow()
-  .broadcast('rename', ':uppercase')
-  .remove(['tags[0]', 'name.first'])
-  .add('numbers', '123')
-
-  .field('access')
-  .def(0)
-
-  .field('friends')
-  .add(function (item) {
-    return {
-      test: item.name + '!'
-    }
-  })
-
-  .field('isActive')
-  .rename('asd')
-
-  .field('isActive')
-  .remove()
-
-  .field('id')
-  .rename('hash')
-
-  .then()
-  .field('FRIENDS')
-  .convert({
-    from: 'any',
-    to: 'json'
-  });
+//var flow = Mutate.flow()
+//  .broadcast('rename', ':uppercase')
+//  .remove(['tags[0]', 'name.first'])
+//  .add('numbers', '123')
+//
+//  .field('access')
+//  .def(0)
+//
+//  .field('friends')
+//  .add(function (item) {
+//    return {
+//      test: item.name + '!'
+//    }
+//  })
+//
+//  .field('isActive')
+//  .rename('asd')
+//
+//  .field('isActive')
+//  .remove()
+//
+//  .field('id')
+//  .rename('hash')
+//
+//  .then()
+//  .field('FRIENDS')
+//  .convert({
+//    from: 'any',
+//    to: 'json'
+//  });
 
 
 /**
@@ -182,31 +182,89 @@ var o = [
 //}), null, 4));
 
 
-var a = [
-  {id: "a", name: "a name", friends: [
-    {id: 1, name: 'f1'},
-    {id:2, name:'f2'},
-    {id:3, name:'f3'}
-  ]},
-  {id: "b", name: "b name", friends: [
-    {id: 11, name: 'f11'},
-    {id:22, name:'f32'},
-    {id:33, name:'f33'}
-  ]}
-];
+// var a = [
+//  {id: "a", name: "a name", friends: [
+//    {id: 1, name: 'f1'},
+//    {id:2, name:'f2'},
+//    {id:3, name:'f3'}
+//  ]},
+//  {id: "b", name: "b name", friends: [
+//    {id: 11, name: 'f11'},
+//    {id:22, name:'f32'},
+//    {id:33, name:'f33'}
+//  ]}
+//];
+//
+//var Formula = Mutate.flow()
+//  .field('friends')
+//    .each(function(item){
+//      return item.name;
+//    })
+//    .copy('a')
+//    .copy('b.deep.insert')
+//  .then()
+//    .field('a')
+//      .concat('Any_To_Json')
+//      .concat('Any_To_Json2');
+//
+
+
+  //var Formula = Mutate.flow()
+  //.add('a', 1)
+  //.add('b', 2);
+
+//
+//var Formula = Mutate.flow()
+//  .field('p')
+//    .child('a')
+//      .convert(function(){
+//    return 111;
+//  });
+
+//
+//var FormulaEach = Mutate.flow()
+//  .field('p')
+//  .each(function(item){
+//    return item.a;
+//  });
+//
+//var Origin = {
+//  p: [
+//    {
+//      a:1,
+//      b:2,
+//      c:3
+//    },
+//    {
+//      a:4,
+//      b:5,
+//      c:6
+//    }
+//  ]
+//};
+//
+//console.log(JSON.stringify(Formula(Origin), null, 4)); // Will replace each p.a attr with 111
+//console.log(JSON.stringify(FormulaEach(Origin), null, 4)); // { p: [1, 4] }
+//
+
+var Oriring = {
+  user_profile: 1,
+  team_management: 2,
+  backOffice: 3,
+  maxOsX: 4
+};
 
 var Formula = Mutate.flow()
-  .field('friends')
-    .each(function(item){
-      return item.name;
-    })
-    .copy('a')
-    .copy('b.deep.insert')
+  .broadcast('rename', ':toSnakeCase')
+    .field('user_profile')
+    .field('team_management')
+    .field('backOffice')
+    .field('maxOsX')
+
   .then()
-    .field('a')
-      .concat('Any_To_Json')
-      .concat('Any_To_Json2');
+    .convert(function(key, value){
+      return key;
+    });
 
-
-console.log(JSON.stringify(Formula(a), null, 4));
-
+console.log(JSON.stringify(Formula(Oriring), null, 4)); // Will replace each p.a attr with 111
+//console.log(JSON.stringify(FormulaEach(Origin), null, 4)); // { p: [1, 4] }
