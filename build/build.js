@@ -270,6 +270,7 @@ function getFlow() {
     AVAILABLE_TYPES = ['transform', 'select'];
 
   function initRules() {
+    current = [];
     rules = {
       fields: {}
     }
@@ -388,8 +389,8 @@ function getFlow() {
     if (!isEmpty()){
       pushQueue();
     }
-
     initRules();
+
 
     return this;
   };
@@ -474,6 +475,7 @@ module.exports = {
       if (Source.hasOwnProperty('flow')) {
         Instance[name] = function () {
           Flow.isCurrentSelected();
+
           var expr = Source.flow(Flow.getRule(), Flow.getField());
           expr.apply(Source, arguments);
 
@@ -1076,7 +1078,8 @@ module.exports = {
 'use strict';
 
 var isObject = _dereq_('../utils/types').isObject,
-  isArray = _dereq_('../utils/types').isArray;
+  isArray = _dereq_('../utils/types').isArray,
+  isFunction = _dereq_('../utils/types').isFunction;
 
 var methods = {
   uppercase: function (key) {
@@ -1085,6 +1088,20 @@ var methods = {
 
   lowercase: function (key) {
     return key.toLowerCase();
+  },
+
+  // TODO: add support for symbols ! @ $ % etc.
+  toCamelCase: function(key){
+    return key.replace(/(\_[a-z])/g, function($1){
+      return $1.toUpperCase().replace('_','');
+    });
+  },
+
+  // TODO: add support for symbols ! @ $ % etc.
+  toSnakeCase: function(key){
+    return key.replace(/([A-Z])/g, function($1){
+      return "_"+$1.toLowerCase();
+    });
   }
 };
 
@@ -1121,44 +1138,31 @@ module.exports = {
 
   run: function (key, value, config, origin, transformed) {
 
+    console.log(key);
     /**
      * If not root element
      */
     if (key !== undefined) {
-      var rename = config,
-        expr;
+      var rename;
 
-      if (config[0] == ':') {
-        expr = config.slice(1);
+      if (isFunction(config)){
+        rename = config(key);
+      } else {
+        var expr;
+        rename = config;
 
-        if (!methods.hasOwnProperty(expr)) {
-          throw new Error('Rename method does not exist');
-        }
+        if (config[0] == ':') {
+          expr = config.slice(1);
 
-        rename = methods[expr](key);
-      } else if (config[0] == '*') {
-        expr = config.slice(1);
-
-        if (!methods.hasOwnProperty(expr)) {
-          throw new Error('Rename method does not exist');
-        }
-
-        rename = methods[expr](key);
-        if (isObject(value)) {
-          var renamed;
-
-          if (isArray(value)) {
-            renamed = [];
-            for (var i = 0, size = value.length; i < size; i++) {
-              renamed[i] = renameObject(methods[expr], value[i]);
-            }
-          } else {
-            renamed = renameObject(methods[expr], value);
+          if (!methods.hasOwnProperty(expr)) {
+            throw new Error('Rename method does not exist');
           }
 
-          value = renamed;
+          rename = methods[expr](key);
         }
       }
+    } else {
+      console.warn('<dev-note>: remove such situation. (rename for root element)');
     }
 
     return {
