@@ -260,11 +260,14 @@ var Formula = Mutate.flow()
     .field('team_management')
     .field('backOffice')
     .field('maxOsX')
+      .rename(function(key){
+        return key + 'Added_value';
+      })
 
   .then()
     .convert(function(key, value){
       return key;
     });
 
-console.log(JSON.stringify(Formula(Oriring), null, 4)); // Will replace each p.a attr with 111
+console.log(JSON.stringify(Formula(Oriring), null, 4));
 //console.log(JSON.stringify(FormulaEach(Origin), null, 4)); // { p: [1, 4] }

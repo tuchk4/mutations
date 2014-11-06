@@ -1,7 +1,8 @@
 'use strict';
 
 var isObject = require('../utils/types').isObject,
-  isArray = require('../utils/types').isArray;
+  isArray = require('../utils/types').isArray,
+  isFunction = require('../utils/types').isFunction;
 
 var methods = {
   uppercase: function (key) {
@@ -12,12 +13,14 @@ var methods = {
     return key.toLowerCase();
   },
 
+  // TODO: add support for symbols ! @ $ % etc.
   toCamelCase: function(key){
     return key.replace(/(\_[a-z])/g, function($1){
       return $1.toUpperCase().replace('_','');
     });
   },
 
+  // TODO: add support for symbols ! @ $ % etc.
   toSnakeCase: function(key){
     return key.replace(/([A-Z])/g, function($1){
       return "_"+$1.toLowerCase();
@@ -62,18 +65,23 @@ module.exports = {
      * If not root element
      */
     if (key !== undefined) {
-      var rename = config,
-        expr;
+      var rename;
 
-      if (config[0] == ':') {
-        expr = config.slice(1);
+      if (isFunction(config)){
+        rename = config(key);
+      } else {
+        var expr;
+        rename = config;
 
+        if (config[0] == ':') {
+          expr = config.slice(1);
 
-        if (!methods.hasOwnProperty(expr)) {
-          throw new Error('Rename method does not exist');
+          if (!methods.hasOwnProperty(expr)) {
+            throw new Error('Rename method does not exist');
+          }
+
+          rename = methods[expr](key);
         }
-
-        rename = methods[expr](key);
       }
     }
 
