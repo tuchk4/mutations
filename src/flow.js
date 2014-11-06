@@ -13,6 +13,7 @@ function getFlow() {
     AVAILABLE_TYPES = ['transform', 'select'];
 
   function initRules() {
+    current = [];
     rules = {
       fields: {}
     }
@@ -131,8 +132,8 @@ function getFlow() {
     if (!isEmpty()){
       pushQueue();
     }
-
     initRules();
+
 
     return this;
   };
@@ -217,6 +218,7 @@ module.exports = {
       if (Source.hasOwnProperty('flow')) {
         Instance[name] = function () {
           Flow.isCurrentSelected();
+
           var expr = Source.flow(Flow.getRule(), Flow.getField());
           expr.apply(Source, arguments);
 
