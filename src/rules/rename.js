@@ -61,6 +61,7 @@ module.exports = {
 
   run: function (key, value, config, origin, transformed) {
 
+    console.log(key);
     /**
      * If not root element
      */
@@ -83,6 +84,8 @@ module.exports = {
           rename = methods[expr](key);
         }
       }
+    } else {
+      console.warn('<dev-note>: remove such situation. (rename for root element)');
     }
 
     return {
