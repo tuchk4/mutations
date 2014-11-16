@@ -61,7 +61,6 @@ module.exports = {
 
   run: function (key, value, config, origin, transformed) {
 
-    console.log(key);
     /**
      * If not root element
      */
