@@ -255,8 +255,8 @@ var Oriring = {
 };
 
 var Formula = Mutate.flow()
-  .broadcast('rename', ':toSnakeCase')
-    .field('user_profile')
+  .broadcast('rename', ':toCamelCase')
+    .field('_user_profile')
     .field('team_management')
     .field('backOffice')
     .field('maxOsX')

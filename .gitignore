@@ -3,4 +3,4 @@ node_modules
 bower_components
 test/output
 test/src-cov
-/index.js
+/_index.js
