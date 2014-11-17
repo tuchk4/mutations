@@ -14,7 +14,7 @@
     "run-mocha.bat",
     "Makefile",
     "gulpfile.js",
-    "package.js",
+    "package.json",
     "_index.js"
   ]
 }
