@@ -23,6 +23,23 @@ var Mutators = {
     return value.constructor === Object;
    },
 
+  has: function(obj, path){
+    var parts = path.split('.'),
+      storage = obj,
+      key = path;
+
+    if (parts.length > 1){
+      key = parts.pop();
+
+      var parent = parts.join('.');
+
+      storage = this.get(obj, parent);
+    }
+
+    return storage.hasOwnProperty(key);
+
+  },
+
   get: function get(obj, path) {
     var parts = path.match(re),
       current = obj;

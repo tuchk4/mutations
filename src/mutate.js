@@ -100,8 +100,8 @@ function resolve(origin, config) {
   for (var i = 0, size = keys.length; i < size; i++) {
 
     var key = keys[i],
-      clone = true,
-      value = Mutators.get(origin, key, clone);
+      isExists = Mutators.has(origin, key),
+      value = Mutators.get(origin, key);
 
     Steps.addKey(key);
 
@@ -114,10 +114,10 @@ function resolve(origin, config) {
           value = Mutate(value, local);
         }
 
-        if (isString(local)){
+        if (isString(local)) {
           local = {
             rename: local
-          }
+          };
         }
 
         processed = acceptRules(key, value, local, transformed, origin);
@@ -126,9 +126,11 @@ function resolve(origin, config) {
         value = processed.value;
       }
 
-      Mutators.insert(transformed, key, value);
+      if (value || isExists){
+        Mutators.insert(transformed, key, value);
+      }
 
-      if (keys[i] != key){
+      if (keys[i] != key) {
         Mutators.remove(transformed, keys[i]);
         Mutators.clean(transformed, keys[i]);
       }
@@ -179,7 +181,6 @@ var Mutate = function (origin) {
 
   var obj = origin,
     configs = Array.prototype.slice.call(arguments, 1);
-
 
   for (var i = 0, size = configs.length; i < size; i++) {
     var config = configs[i];
