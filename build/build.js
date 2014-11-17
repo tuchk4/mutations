@@ -101,8 +101,8 @@ function resolve(origin, config) {
   for (var i = 0, size = keys.length; i < size; i++) {
 
     var key = keys[i],
-      clone = true,
-      value = Mutators.get(origin, key, clone);
+      isExists = Mutators.has(origin, key),
+      value = Mutators.get(origin, key);
 
     Steps.addKey(key);
 
@@ -115,10 +115,10 @@ function resolve(origin, config) {
           value = Mutate(value, local);
         }
 
-        if (isString(local)){
+        if (isString(local)) {
           local = {
             rename: local
-          }
+          };
         }
 
         processed = acceptRules(key, value, local, transformed, origin);
@@ -127,9 +127,11 @@ function resolve(origin, config) {
         value = processed.value;
       }
 
-      Mutators.insert(transformed, key, value);
+      if (value || isExists){
+        Mutators.insert(transformed, key, value);
+      }
 
-      if (keys[i] != key){
+      if (keys[i] != key) {
         Mutators.remove(transformed, keys[i]);
         Mutators.clean(transformed, keys[i]);
       }
@@ -180,7 +182,6 @@ var Mutate = function (origin) {
 
   var obj = origin,
     configs = Array.prototype.slice.call(arguments, 1);
-
 
   for (var i = 0, size = configs.length; i < size; i++) {
     var config = configs[i];
@@ -254,6 +255,7 @@ Mutate.flow = function () {
 };
 
 module.exports = Mutate;
+
 },{"./flow":2,"./manager":3,"./rules/add":4,"./rules/concat":5,"./rules/convert":6,"./rules/copy":7,"./rules/def":8,"./rules/each":9,"./rules/map":10,"./rules/rename":11,"./utils/mutators":12,"./utils/nests":13,"./utils/steps":14,"./utils/types":15}],2:[function(_dereq_,module,exports){
 'use strict';
 
@@ -619,6 +621,7 @@ var Manager = {
 };
 
 module.exports = Manager;
+
 },{"./utils/mutators":12,"./utils/nests":13,"./utils/types":15}],4:[function(_dereq_,module,exports){
 'use strict';
 
@@ -1138,7 +1141,6 @@ module.exports = {
 
   run: function (key, value, config, origin, transformed) {
 
-    console.log(key);
     /**
      * If not root element
      */
@@ -1204,6 +1206,23 @@ var Mutators = {
   isPlain: function(value){
     return value.constructor === Object;
    },
+
+  has: function(obj, path){
+    var parts = path.split('.'),
+      storage = obj,
+      key = path;
+
+    if (parts.length > 1){
+      key = parts.pop();
+
+      var parent = parts.join('.');
+
+      storage = this.get(obj, parent);
+    }
+
+    return storage.hasOwnProperty(key);
+
+  },
 
   get: function get(obj, path) {
     var parts = path.match(re),
@@ -1379,6 +1398,7 @@ var Mutators = {
 };
 
 module.exports = Mutators;
+
 },{"./types":15}],13:[function(_dereq_,module,exports){
 'use strict';
 
