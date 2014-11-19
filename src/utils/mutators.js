@@ -57,6 +57,12 @@ var Mutators = {
     return this.copy(current);;
   },
 
+  /**
+   * Make Deep copy
+   *
+   * @param value
+   * @returns {*}
+   */
   copy: function(value){
     var result;
 

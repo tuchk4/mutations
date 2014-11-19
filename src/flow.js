@@ -2,15 +2,37 @@
 
 var isArray = require('./utils/types').isArray,
   isObject = require('./utils/types').isObject,
-  Mutators = require('./utils/mutators');
+  Mutators = require('./utils/mutators'),
+  RuleManager = require('./manager');
 
-function getFlow() {
+function getInstance(rules, queue, current, onExec) {
+  var Flow = getFlow(rules, queue, current, onExec),
+    Instance = Flow.instance;
 
-  var rules = {},
-    queue = [],
-    current = [],
-    onExec,
-    AVAILABLE_TYPES = ['transform', 'select'];
+  RuleManager.eachSource(function (name, Source) {
+    if (Source.hasOwnProperty('flow')) {
+      Instance[name] = function () {
+        Flow.isCurrentSelected();
+
+        var expr = Source.flow(Flow.getRule(), Flow.getField());
+        expr.apply(Source, arguments);
+
+        return Instance;
+      }
+    }
+  });
+
+  return Instance;
+}
+
+function getFlow(rules, queue, current, onExec) {
+
+  rules = rules || {};
+  queue = queue || [];
+  current = current || [];
+  onExec = onExec || function(){};
+
+  var  AVAILABLE_TYPES = ['transform', 'select'];
 
   function initRules() {
     current = [];
@@ -102,10 +124,18 @@ function getFlow() {
     return onExec.apply(null, [source].concat(queue));
   };
 
+  /**
+   * Function that will be called if execute flow result as function
+   * @param on
+   */
   Flow.onExec = function (on) {
     onExec = on;
   };
 
+  /**
+   * Get all registered rules via flow
+   * @returns {Array}
+   */
   Flow.getQueue = function () {
     if (!isEmpty()) {
       Flow.then();
@@ -115,7 +145,7 @@ function getFlow() {
   };
 
   /**
-   * Default Flow methods
+   * Set transform type (select, transform)
    */
   Flow.type = function (type) {
     if (AVAILABLE_TYPES.indexOf(type) == -1) {
@@ -127,7 +157,10 @@ function getFlow() {
     return this;
   };
 
-
+  /**
+   * Next mutation iteration
+   * @returns {Flow}
+   */
   Flow.then = function () {
     if (!isEmpty()){
       pushQueue();
@@ -138,6 +171,11 @@ function getFlow() {
     return this;
   };
 
+  /**
+   * Select src field (could be set as complex strings a.b.c a.b[1].c)
+   * @param field
+   * @returns {Flow}
+   */
   Flow.field = function (field) {
     addField(field);
     current = [field];
@@ -145,12 +183,22 @@ function getFlow() {
     return this;
   };
 
+  /**
+   * Select field from .field() src (could be set as complex strings a.b.c a.b[1].c)
+   * @param field
+   * @returns {Flow}
+   */
   Flow.child = function (field) {
     current.push(field);
 
     return this;
   };
 
+  /**
+   * Ignoring fields (could be set as complex strings a.b.c a.b[1].c)
+   * @param field
+   * @returns {Flow}
+   */
   Flow.remove = function (field) {
     isCurrentSelected();
 
@@ -180,6 +228,10 @@ function getFlow() {
     return this;
   };
 
+  /**
+   * Apply rule for all children
+   * @returns {Flow}
+   */
   Flow.broadcast = function () {
     isCurrentSelected();
 
@@ -200,6 +252,15 @@ function getFlow() {
     return this;
   };
 
+  /**
+   * Clone flow instance
+   */
+  Flow.clone = function(){
+
+    return getInstance(rules, queue, current, onExec);
+  };
+
+
   return {
     getRule: getRule,
     getField: getField,
@@ -210,23 +271,5 @@ function getFlow() {
 
 
 module.exports = {
-  getInstance: function (Manager) {
-    var Flow = getFlow(),
-      Instance = Flow.instance;
-
-    Manager.eachSource(function (name, Source) {
-      if (Source.hasOwnProperty('flow')) {
-        Instance[name] = function () {
-          Flow.isCurrentSelected();
-
-          var expr = Source.flow(Flow.getRule(), Flow.getField());
-          expr.apply(Source, arguments);
-
-          return Instance;
-        }
-      }
-    });
-
-    return Instance;
-  }
+  getInstance: getInstance
 };

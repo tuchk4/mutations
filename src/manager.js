@@ -3,13 +3,8 @@
 var isObject = require('./utils/types').isObject,
   isFunction = require('./utils/types').isFunction,
   isArray = require('./utils/types').isArray,
-  Map = require('./utils/mutators').map,
   Nests = require('./utils/nests');
 
-
-function unique(value, index, self) {
-  return self.indexOf(value) === index;
-}
 
 var Manager = {
   rules: [],
