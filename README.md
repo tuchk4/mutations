@@ -1,3 +1,8 @@
+# TODO:
+
+  - redev mutate main loop
+  - Maybe implement rule execution as they were defined? Not by priority
+  - Remove fields (or ignore) at .convert function?
 
 # Mutate javascript objects and arrays
 
