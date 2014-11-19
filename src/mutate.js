@@ -24,6 +24,27 @@ function extract(config) {
   });
 }
 
+function mergeChildMutation(value, local, transformed, type){
+  var child = Mutate(value, local),
+    keys;
+
+  if (type == 'select'){
+    keys = Object.keys(local.fields);
+  } else {
+    keys = Object.keys(child);
+  }
+
+  for (var i = 0, size = keys.length; i < size; i++){
+    var key = Steps.get() + '.' + keys[i];
+
+    if (!Mutators.has(transformed, key)){
+      var childValue = Mutators.get(child, keys[i]);
+
+      Mutators.insert(transformed, key, childValue);
+    }
+  }
+}
+
 function convert(items) {
   var path = Steps.get(),
     arr = isArray(items),
@@ -97,22 +118,25 @@ function resolve(origin, config) {
 
   var processed;
 
+
   for (var i = 0, size = keys.length; i < size; i++) {
 
     var key = keys[i],
       isExists = Mutators.has(origin, key),
       value = Mutators.get(origin, key);
 
+
     Steps.addKey(key);
 
+    var hasRules = true;
+
+
     if (!isRemoving(key, value)) {
+
+
       if (config.fields.hasOwnProperty(key)) {
 
         var local = config.fields[key];
-
-        if (local.hasOwnProperty('fields') || local.hasOwnProperty('remove')) {
-          value = Mutate(value, local);
-        }
 
         if (isString(local)) {
           local = {
@@ -120,22 +144,33 @@ function resolve(origin, config) {
           };
         }
 
-        processed = acceptRules(key, value, local, transformed, origin);
+        if (local.hasOwnProperty('fields') || local.hasOwnProperty('remove')) {
+          mergeChildMutation(value, local, transformed, config.type);
+          //value = Mutate(value, local);
+        }
 
-        key = processed.key;
-        value = processed.value;
+
+        hasRules = !!extract(local).length; //|| local.hasOwnProperty('fields') || local.hasOwnProperty('remove');
+
+        if (hasRules) {
+          Steps.storePath();
+
+          processed = acceptRules(key, value, local, transformed, origin);
+
+          key = processed.key;
+          value = processed.value;
+        }
       }
 
-      if (value || isExists){
+      if (hasRules && (value || value === false || isExists)) {
         Mutators.insert(transformed, key, value);
       }
 
-      if (keys[i] != key) {
+      if (hasRules && (keys[i] != key)) {
         Mutators.remove(transformed, keys[i]);
         Mutators.clean(transformed, keys[i]);
       }
     }
-
 
     Steps.back();
   }
@@ -233,6 +268,8 @@ Manager.register('rename', require('./rules/rename'), 30);
 Manager.register('each', require('./rules/each'), 40);
 Manager.register('convert', require('./rules/convert'), 60);
 Manager.register('copy', require('./rules/copy'), 70);
+Manager.register('merge', require('./rules/merge'), 100);
+Manager.register('value', require('./rules/value'), 110);
 
 
 Mutate.mutators = Mutators;
@@ -254,3 +291,9 @@ Mutate.flow = function () {
 };
 
 module.exports = Mutate;
+
+
+//http://plarium.rocks/form/comment/add/149
+//116
+//uid:336
+//text:*test

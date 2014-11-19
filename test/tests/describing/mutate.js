@@ -255,8 +255,6 @@ module.exports = function(Mutate){
       };
       var result = Mutate(Origin, rules);
 
-
-
       expect(result).to.only.have.keys(['id', 'age', 'name', 'friends']);
       expect(result.friends).to.have.length(2);
       expect(result.name).to.only.have.keys(['first']);

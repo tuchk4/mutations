@@ -6,7 +6,7 @@ module.exports = {
 
   run: function (key, value, def, origin, transformed) {
 
-    if (value === undefined) {
+    if (!origin.hasOwnProperty(key)) {
       if (isFunction(def)){
         value = def(origin, transformed);
       } else {

@@ -3,6 +3,7 @@
 
 var Steps  = {
   path: [],
+  storage: [],
 
   back: function () {
    this.path.pop();
@@ -24,6 +25,7 @@ var Steps  = {
 
   clear: function () {
     this.path = [];
+    this.storage = [];
   },
 
   get: function (income) {
@@ -49,6 +51,16 @@ var Steps  = {
 
   isRoot: function(){
     return !this.path.length;
+  },
+
+  storePath: function(){
+    var path = this.get();
+
+    this.storage.push(path);
+  },
+
+  getStorage: function(){
+    return this.storage;
   }
 };
 

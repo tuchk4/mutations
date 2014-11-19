@@ -19,16 +19,16 @@ var Mutators = {
   /**
    * Care about this xD
    */
-  isPlain: function(value){
+  isPlain: function (value) {
     return value.constructor === Object;
-   },
+  },
 
-  has: function(obj, path){
+  has: function (obj, path) {
     var parts = path.split('.'),
       storage = obj,
       key = path;
 
-    if (parts.length > 1){
+    if (parts.length > 1) {
       key = parts.pop();
 
       var parent = parts.join('.');
@@ -37,7 +37,6 @@ var Mutators = {
     }
 
     return storage && storage.hasOwnProperty(key);
-
   },
 
   get: function get(obj, path) {
@@ -54,7 +53,7 @@ var Mutators = {
       }
     }
 
-    return this.copy(current);;
+    return this.copy(current);
   },
 
   /**
@@ -63,10 +62,10 @@ var Mutators = {
    * @param value
    * @returns {*}
    */
-  copy: function(value){
+  copy: function (value) {
     var result;
 
-    if (isObject(value) && !isArray(value) && !this.isPlain(value)){
+    if (isObject(value) && !isArray(value) && !this.isPlain(value)) {
       result = value;
     } else {
       result = this.clone(value);
@@ -210,8 +209,42 @@ var Mutators = {
     throw new Error("Unable to copy obj");
   },
 
-  standalone: function(method){
-    if (!this.hasOwnProperty(method)){
+  dots: function (obj, key, nests) {
+    var dots = [];
+
+    if (key === true  || key == false){
+      nests = key;
+      key = '';
+    } else {
+      key = key || '';
+    }
+
+    if (key.length) {
+      key += '.';
+    }
+
+    for (var field in obj) {
+      if (obj.hasOwnProperty(field)) {
+        var current = key + field;
+
+        if (nests){
+          dots.push(current);
+        }
+
+        if (isObject(obj[field])) {
+          var expanded = this.dots(obj[field], current, nests);
+          dots = dots.concat(expanded);
+        } else if (!nests){
+          dots.push(current);
+        }
+      }
+    }
+
+    return dots;
+  },
+
+  standalone: function (method) {
+    if (!this.hasOwnProperty(method)) {
       throw new Error('Method does not exists');
     }
 
