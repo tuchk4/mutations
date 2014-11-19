@@ -36,7 +36,7 @@ var Mutators = {
       storage = this.get(obj, parent);
     }
 
-    return storage.hasOwnProperty(key);
+    return storage && storage.hasOwnProperty(key);
 
   },
 
