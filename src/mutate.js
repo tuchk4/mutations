@@ -16,33 +16,26 @@ function unique(value, index, self) {
   return self.indexOf(value) === index;
 }
 
-function extract(config) {
-  var exclude = ['fields', 'type', 'broadcast'];
+function extractNames(config) {
+  var exclude = ['fields', 'type', 'broadcast', 'remove'];
 
   return Object.keys(config).filter(function (key) {
     return exclude.indexOf(key) == -1;
   });
+
 }
 
-function mergeChildMutation(value, local, transformed, type){
-  var child = Mutate(value, local),
-    keys;
+function extract(config) {
 
-  if (type == 'select'){
-    keys = Object.keys(local.fields);
-  } else {
-    keys = Object.keys(child);
+  var keys = extractNames(config),
+    rules = {};
+
+  for (var i = 0, size = keys.length; i < size; i++) {
+    var key = keys[i];
+    rules[key] = config[key];
   }
 
-  for (var i = 0, size = keys.length; i < size; i++){
-    var key = Steps.get() + '.' + keys[i];
-
-    if (!Mutators.has(transformed, key)){
-      var childValue = Mutators.get(child, keys[i]);
-
-      Mutators.insert(transformed, key, childValue);
-    }
-  }
+  return rules;
 }
 
 function convert(items) {
@@ -69,44 +62,34 @@ function convert(items) {
   return converted;
 }
 
-function isRemoving(key, value) {
-  var removing = Nests.merge('remove'),
-    step = Steps.get(),
-    isRemoving = false;
+function isIgnoring(step, ignoring) {
+  var ignore = false;
 
-  for (var i = 0, size = removing.length; i < size; i++) {
-    var field = removing[i];
-    if (field.indexOf(step) == 0) {
-      if (field == step) {
-        isRemoving = true;
-      } else {
-        Mutators.remove(value, field.replace(step, ''));
-      }
+  for (var i = 0, size = ignoring.length; i < size; i++) {
+    var key = ignoring[i];
+
+    if (step.indexOf(key) == 0) {
+      ignore = true;
       break;
     }
   }
 
-  return isRemoving;
+  return ignore;
+}
+
+function removeNested(removing, value) {
+  for (var i = 0, size = removing.length; i < size; i++) {
+    var dots = removing[i];
+    if (Mutators.has(value, dots)) {
+      Mutators.remove(value, dots);
+    }
+  }
 }
 
 function resolve(origin, config) {
 
   var transformed = {},
-    keys = [],
-    nests = {
-      broadcast: false,
-      remove: false
-    };
-
-  if (config.hasOwnProperty('broadcast')) {
-    Nests.dig('broadcast', config.broadcast);
-    nests.broadcast = true;
-  }
-
-  if (config.hasOwnProperty('remove')) {
-    Nests.dig('remove', convert(config.remove));
-    nests.remove = true;
-  }
+    keys = [];
 
   if (config.type == 'select') {
     keys = Object.keys(config.fields);
@@ -117,7 +100,6 @@ function resolve(origin, config) {
   }
 
   var processed;
-
 
   for (var i = 0, size = keys.length; i < size; i++) {
 
@@ -130,10 +112,7 @@ function resolve(origin, config) {
 
     var hasRules = true;
 
-
-    if (!isRemoving(key, value)) {
-
-
+    if (!isIgnoring(Steps.get(), config.remove)) {
       if (config.fields.hasOwnProperty(key)) {
 
         var local = config.fields[key];
@@ -144,13 +123,7 @@ function resolve(origin, config) {
           };
         }
 
-        if (local.hasOwnProperty('fields') || local.hasOwnProperty('remove')) {
-          mergeChildMutation(value, local, transformed, config.type);
-          //value = Mutate(value, local);
-        }
-
-
-        hasRules = !!extract(local).length; //|| local.hasOwnProperty('fields') || local.hasOwnProperty('remove');
+        hasRules = !!extractNames(local).length;
 
         if (hasRules) {
           Steps.storePath();
@@ -162,33 +135,26 @@ function resolve(origin, config) {
         }
       }
 
-      if (hasRules && (value || value === false || isExists)) {
+      if (value || isExists) {
         Mutators.insert(transformed, key, value);
       }
 
-      if (hasRules && (keys[i] != key)) {
+      if (keys[i] != key) {
         Mutators.remove(transformed, keys[i]);
-        Mutators.clean(transformed, keys[i]);
       }
     }
 
     Steps.back();
   }
 
-  if (nests.broadcast) {
-    Nests.climb('broadcast');
-  }
-
-  if (nests.remove) {
-    Nests.climb('remove');
-  }
+  removeNested(config.remove, transformed);
 
   return transformed;
 }
 
 function acceptRules(key, value, config, transformed, origin) {
 
-  Manager.each(extract(config), function (rule, Source, broadcast) {
+  Manager.each(extractNames(config), function (rule, Source, broadcast) {
     var params = broadcast || config[rule],
       processed = Source.run(key, value, params, origin, transformed);
 
@@ -209,18 +175,83 @@ function fillDefaults(config) {
   if (!config.hasOwnProperty('fields')) {
     config.fields = {};
   }
+
+  if (!config.hasOwnProperty('remove')) {
+    config.remove = [];
+  }
 }
 
+
+function parse(resolve, config, append) {
+  fillDefaults(config);
+
+  var current = append = append ? append + '.' : '';
+
+  var rules = extract(config) || {},
+    remove = config.remove || [];
+
+  remove = remove.map(function(field){
+    return current + field;
+  });
+
+  resolve(append, rules, remove);
+
+  for (var field in config.fields) {
+    if (config.fields.hasOwnProperty(field)) {
+      var local = config.fields[field];
+
+      var dot = current + field;
+
+      parse(resolve, local, dot);
+    }
+  }
+}
+
+
+function normalize(config) {
+  var normalized = {
+    fields: {},
+    remove: []
+  };
+
+  parse(function (field, rules, remove) {
+
+    if (Object.keys(rules).length) {
+      var storage;
+
+      if (field) {
+        if (!normalized.fields.hasOwnProperty(field)) {
+          normalized.fields[field] = {};
+        }
+
+        storage = normalized.fields[field];
+      } else {
+        storage = normalized;
+      }
+
+      for (var rule in rules) {
+        if (rules.hasOwnProperty(rule)) {
+          storage[rule] = rules[rule];
+        }
+      }
+    }
+
+    if (remove.length) {
+      normalized.remove = normalized.remove.concat(remove);
+    }
+  }, config);
+
+  return normalized;
+}
 
 var Mutate = function (origin) {
 
   var obj = origin,
     configs = Array.prototype.slice.call(arguments, 1);
 
-  for (var i = 0, size = configs.length; i < size; i++) {
-    var config = configs[i];
 
-    fillDefaults(config);
+  for (var i = 0, size = configs.length; i < size; i++) {
+    var config = normalize(configs[i]);
 
     var transformed;
 
@@ -291,9 +322,3 @@ Mutate.flow = function () {
 };
 
 module.exports = Mutate;
-
-
-//http://plarium.rocks/form/comment/add/149
-//116
-//uid:336
-//text:*test

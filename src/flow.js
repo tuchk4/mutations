@@ -68,14 +68,10 @@ function getFlow(rules, queue, current, onExec) {
     return isRemoveEmpty && !isExists;
   }
 
-  function getRule(d) {
+  function getRule() {
     var obj = rules;
 
-    if (arguments.length == 0) {
-      d = 0;
-    }
-
-    for (var i = 0, size = current.length - d; i < size; i++) {
+    for (var i = 0, size = current.length; i < size; i++) {
       var field = current[i];
       if (!obj.hasOwnProperty('fields')) {
         obj.fields = {};
@@ -204,14 +200,7 @@ function getFlow(rules, queue, current, onExec) {
 
     field = field || getField();
 
-    var rule;
-
-    if (!!arguments.length) {
-      rule = rules;
-    } else {
-      rule = getRule(1);
-    }
-
+    var rule = getRule();
 
     if (!rule.hasOwnProperty('remove')) {
       rule.remove = [];
