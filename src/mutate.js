@@ -6,7 +6,6 @@ var isArray = require('./utils/types').isArray,
   isString = require('./utils/types').isString,
   exist = require('./utils/types').exist,
   Mutators = require('./utils/mutators'),
-  Nests = require('./utils/nests'),
   Flow = require('./flow'),
   Steps = require('./utils/steps'),
   Manager = require('./manager');
@@ -262,18 +261,16 @@ var Mutate = function (origin) {
         var isRoot = Steps.isRoot();
 
         Steps.addIndex(j);
-
-        if (Nests.merge('remove').indexOf(Steps.get()) == -1) {
-          transformed.push(resolve(obj[j], config, isRoot));
-        }
+        /**
+         * TODO: check remove and other rules for root element
+         */
+        transformed.push(resolve(obj[j], config, isRoot));
 
         Steps.back();
       }
     } else {
-
       transformed = resolve(obj, config);
     }
-
 
     if (Steps.isRoot() || isRoot) {
       var processed = acceptRules(undefined, transformed, config, transformed, origin);
