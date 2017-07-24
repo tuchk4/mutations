@@ -1,5 +1,7 @@
 # TODO:
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/tuchk4/mutations.svg)](https://greenkeeper.io/)
+
   - DONE* redev mutate main loop
   - Maybe implement rule execution as they were defined? Not by priority
   - Remove fields (or ignore) at .convert function?
